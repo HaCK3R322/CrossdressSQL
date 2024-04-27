@@ -1,0 +1,20 @@
+# ninja log v5
+38	178	7359251850453818	CMakeFiles/CrossdressSQL.dir/entities/Header.cpp.obj	8f602aafc117df4a
+13	980	7359224027046653	CMakeFiles/CrossdressSQL.dir/entities/Student.cpp.obj	1cf7f5a9b7990a42
+8	828	7359255656552075	CMakeFiles/CrossdressSQL.dir/main.cpp.obj	d091ed874d33676a
+34	191	7359224019966622	CMakeFiles/CrossdressSQL.dir/entities/Pointer.cpp.obj	9e6d5d93c19d20dc
+16	562	7359238050985024	CMakeFiles/CrossdressSQL.dir/Student.cpp.obj	3e7eeb1d8c5ab58e
+1258	1431	7359255662532067	CrossdressSQL.exe	9211385a8382b8a
+4	324	7359255720812074	build.ninja	8129cd7b2300633b
+10	371	7359219582904071	CMakeFiles/CrossdressSQL.dir/src/Student.cpp.obj	e2e1ba133ac55c82
+20	393	7359215634326985	CMakeFiles/CrossdressSQL.dir/src/main.cpp.obj	6e87458216c27d32
+15	1257	7359255660812082	CMakeFiles/CrossdressSQL.dir/Database.cpp.obj	501e972a185f93d8
+11	1268	7359256526050941	CMakeFiles/CrossdressSQL.dir/Database.cpp.obj	501e972a185f93d8
+1268	1455	7359256527900943	CrossdressSQL.exe	9211385a8382b8a
+7	586	7359256949782526	CMakeFiles/CrossdressSQL.dir/main.cpp.obj	d091ed874d33676a
+587	733	7359256951222516	CrossdressSQL.exe	9211385a8382b8a
+10	788	7359259584088329	CMakeFiles/CrossdressSQL.dir/main.cpp.obj	d091ed874d33676a
+19	1228	7359259588488315	CMakeFiles/CrossdressSQL.dir/Database.cpp.obj	501e972a185f93d8
+1228	1385	7359259590018315	CrossdressSQL.exe	9211385a8382b8a
+7	1031	7359260133243120	CMakeFiles/CrossdressSQL.dir/Database.cpp.obj	501e972a185f93d8
+1032	1179	7359260134693104	CrossdressSQL.exe	9211385a8382b8a
