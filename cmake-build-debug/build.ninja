@@ -61,18 +61,6 @@ build CMakeFiles/CrossdressSQL.dir/Database.cpp.obj: CXX_COMPILER__CrossdressSQL
   OBJECT_DIR = CMakeFiles\CrossdressSQL.dir
   OBJECT_FILE_DIR = CMakeFiles\CrossdressSQL.dir
 
-build CMakeFiles/CrossdressSQL.dir/entities/Header.cpp.obj: CXX_COMPILER__CrossdressSQL_unscanned_Debug C$:/Users/dicta/CLionProjects/CrossdressSQL/entities/Header.cpp || cmake_object_order_depends_target_CrossdressSQL
-  DEP_FILE = CMakeFiles\CrossdressSQL.dir\entities\Header.cpp.obj.d
-  FLAGS = -g -fdiagnostics-color=always
-  OBJECT_DIR = CMakeFiles\CrossdressSQL.dir
-  OBJECT_FILE_DIR = CMakeFiles\CrossdressSQL.dir\entities
-
-build CMakeFiles/CrossdressSQL.dir/entities/Pointer.cpp.obj: CXX_COMPILER__CrossdressSQL_unscanned_Debug C$:/Users/dicta/CLionProjects/CrossdressSQL/entities/Pointer.cpp || cmake_object_order_depends_target_CrossdressSQL
-  DEP_FILE = CMakeFiles\CrossdressSQL.dir\entities\Pointer.cpp.obj.d
-  FLAGS = -g -fdiagnostics-color=always
-  OBJECT_DIR = CMakeFiles\CrossdressSQL.dir
-  OBJECT_FILE_DIR = CMakeFiles\CrossdressSQL.dir\entities
-
 
 # =============================================================================
 # Link build statements for EXECUTABLE target CrossdressSQL
@@ -81,7 +69,7 @@ build CMakeFiles/CrossdressSQL.dir/entities/Pointer.cpp.obj: CXX_COMPILER__Cross
 #############################################
 # Link the executable CrossdressSQL.exe
 
-build CrossdressSQL.exe: CXX_EXECUTABLE_LINKER__CrossdressSQL_Debug CMakeFiles/CrossdressSQL.dir/main.cpp.obj CMakeFiles/CrossdressSQL.dir/Database.cpp.obj CMakeFiles/CrossdressSQL.dir/entities/Header.cpp.obj CMakeFiles/CrossdressSQL.dir/entities/Pointer.cpp.obj
+build CrossdressSQL.exe: CXX_EXECUTABLE_LINKER__CrossdressSQL_Debug CMakeFiles/CrossdressSQL.dir/main.cpp.obj CMakeFiles/CrossdressSQL.dir/Database.cpp.obj
   FLAGS = -g
   LINK_LIBRARIES = -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
   OBJECT_DIR = CMakeFiles\CrossdressSQL.dir

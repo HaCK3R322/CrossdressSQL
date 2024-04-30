@@ -6,26 +6,51 @@
 #define CROSSDRESSSQL_DATABASE_H
 
 
+#include <algorithm>
 #include <string>
+#include <utility>
 #include <vector>
+#include <iostream>
+#include <fstream>
+#include <filesystem>
+#include <string>
+#include <iomanip>
+#include <ctime>
+#include "entities/TableScheme.h"
 #include "entities/Header.h"
 #include "entities/Pointer.h"
-#include "entities/EntityDescription.h"
+#include "entities/Table.h"
+#include "Util.h"
 
 class Database {
 public:
-    explicit Database(const std::string& name);
+    void init();
 
-    void createTable(EntityDescription description);
-    void dropTable(EntityDescription description);
-private:
-    std::vector<std::string> entities;
+    void createTable(const TableScheme& scheme);
+    void dropTable(const std::string& tableName);
+//private:
+    std::string SCHEMES_FILENAME = "schemes.conf";
+    std::string CONSTRAINS_FILENAME = "constraints.conf";
+    std::filesystem::path dirPath;
+    std::filesystem::path configurationPath;
+    std::filesystem::path schemesPath;
+    std::filesystem::path constraintsPath;
+//    const long long DATA_FILE_SIZE = 1LL * 1024 * 1024 * 1024; // 1gb
+    const long long DATA_FILE_SIZE = 1LL * 1024 * 1024; // 1mb
 
-    Header readHeader(std::string filepath);
-    void saveHeader(std::string filepath);
+    std::string name;
+    std::vector<Table> tables;
 
-    std::vector<Pointer> readPointers(std::string filepath);
-    void savePointers(std::string filepath, std::vector<Pointer> pointers);
+    bool tableExists(const std::string& tableName);
+    void saveAllTablesSchemes();
+    void saveAllTablesConstraints();
+    void saveTableHeader(const Table& table);
+    void saveTablePointers(const Table& table);
+    void readTable(const std::string& tableName);
+    void readAllTables();
+    void saveAllTables();
+
+    void log(const std::string& message);
 };
 
 

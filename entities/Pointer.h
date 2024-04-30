@@ -5,13 +5,10 @@
 #ifndef CROSSDRESSSQL_POINTER_H
 #define CROSSDRESSSQL_POINTER_H
 
-
 class Pointer {
 public:
-    int id;
     int shift;
-
-    Pointer(int id, int shift);
+    bool active = true;
 };
 
 

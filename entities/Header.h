@@ -8,9 +8,9 @@
 
 class Header {
 public:
-    int size;
-
-    explicit Header(int size);
+    int numberOfPointers;
+    int pointersStartShift;
+    int dataStartShift;
 };
 
 
