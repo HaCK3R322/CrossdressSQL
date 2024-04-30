@@ -10,6 +10,7 @@ class Header {
 public:
     int numberOfPointers;
     int pointersStartShift;
+    int pointersEndShift;
     int dataStartShift;
 };
 

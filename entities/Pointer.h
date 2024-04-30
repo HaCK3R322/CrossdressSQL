@@ -8,7 +8,9 @@
 class Pointer {
 public:
     int shift;
-    bool active = true;
+
+    Pointer() = default;
+    explicit Pointer(int shift) : shift(shift) {}
 };
 
 

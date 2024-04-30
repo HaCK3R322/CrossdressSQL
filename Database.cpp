@@ -6,7 +6,7 @@
 
 void Database::init() {
     if(name.empty()) {
-        throw std::invalid_argument("Database should have name for initialization.");
+        throw invalid_argument("Database should have name for initialization.");
     }
 
     // Create the directory path and the file path
@@ -18,24 +18,24 @@ void Database::init() {
     log("Initialization start");
 
     // Check if the directory exists, if not create it
-    if (!std::filesystem::exists(dirPath)) {
-        std::filesystem::create_directory(dirPath);
+    if (!filesystem::exists(dirPath)) {
+        filesystem::create_directory(dirPath);
         log("Created directory: " + dirPath.string());
     }
 
     // if files not exists - then create
-    if(!std::filesystem::exists(configurationPath)) {
-        std::ofstream file(configurationPath);
+    if(!filesystem::exists(configurationPath)) {
+        ofstream file(configurationPath);
         log("Created configuration file");
         file.close();
     }
-    if(!std::filesystem::exists(schemesPath)) {
-        std::ofstream file(schemesPath);
+    if(!filesystem::exists(schemesPath)) {
+        ofstream file(schemesPath);
         log("Created schemes file");
         file.close();
     }
-    if(!std::filesystem::exists(constraintsPath)) {
-        std::ofstream file(constraintsPath);
+    if(!filesystem::exists(constraintsPath)) {
+        ofstream file(constraintsPath);
         log("Created constraints file");
         file.close();
     }
@@ -46,26 +46,26 @@ void Database::init() {
     // create tables descriptions in-memory
 }
 
-void Database::log(const std::string& message) {
+void Database::log(const string& message) {
     // Get the current time
-    auto t = std::time(nullptr);
-    auto tm = *std::localtime(&t);
+    auto t = time(nullptr);
+    auto tm = *localtime(&t);
 
     // Stream to hold the time string
-    std::ostringstream timeStream;
-    timeStream << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
+    ostringstream timeStream;
+    timeStream << put_time(&tm, "%Y-%m-%d %H:%M:%S");
 
     // Compute the maximum length of the prefix "[<time>][<name>]"
-    std::ostringstream prefixStream;
+    ostringstream prefixStream;
     prefixStream << "[" << timeStream.str() << "][" << name << "] ";
-    std::string prefix = prefixStream.str();
+    string prefix = prefixStream.str();
 
     // Determine the number of spaces to add for alignment
     const int targetPrefixLength = 40;  // Set a target prefix length for alignment
-    int spaceCount = std::max(0, targetPrefixLength - static_cast<int>(prefix.length()));
+    int spaceCount = max(0, targetPrefixLength - static_cast<int>(prefix.length()));
 
     // Log the message with alignment by padding spaces if necessary
-    std::cout << prefix << std::string(spaceCount, ' ') << message << std::endl;
+    cout << prefix << string(spaceCount, ' ') << message << endl;
 }
 
 /**
@@ -76,12 +76,12 @@ void Database::log(const std::string& message) {
 void Database::createTable(const TableScheme& scheme) {
     bool lol = tableExists(scheme.name);
     if(tableExists(scheme.name)) {
-        throw std::invalid_argument("Table with name \"" + scheme.name + "\" already exists!");
+        throw invalid_argument("Table with name \"" + scheme.name + "\" already exists!");
     }
 
-    std::ofstream file(configurationPath, std::ios::app);
+    ofstream file(configurationPath, ios::app);
     if (!file.is_open()) {
-        throw std::invalid_argument("Cannot open configuration file!");
+        throw invalid_argument("Cannot open configuration file!");
     }
     file << (scheme.name + "\n");
     file.close();
@@ -91,7 +91,7 @@ void Database::createTable(const TableScheme& scheme) {
     header.pointersStartShift = sizeof(header);
     header.dataStartShift = 0;
 
-    std::vector<Pointer> pointers;
+    vector<Pointer> pointers;
 
     Table table;
     table.scheme = scheme;
@@ -99,7 +99,7 @@ void Database::createTable(const TableScheme& scheme) {
     table.pointers = pointers;
     table.path = dirPath / (table.scheme.name + ".data");
 
-    std::ofstream outfile(table.path, std::ios::binary | std::ios::trunc);
+    ofstream outfile(table.path, ios::binary | ios::trunc);
     outfile.seekp(DATA_FILE_SIZE - 1);
     outfile.put(0);
     outfile.close();
@@ -114,7 +114,7 @@ void Database::createTable(const TableScheme& scheme) {
     log("Created table named " + table.scheme.name);
 }
 
-bool Database::tableExists(const std::string& tableName) {
+bool Database::tableExists(const string& tableName) {
     for(auto &table: tables) {
         if(table.scheme.name == tableName) return true;
     }
@@ -125,7 +125,7 @@ bool Database::tableExists(const std::string& tableName) {
 void Database::saveTableHeader(const Table& table) {
     Header header = table.header;
 
-    std::fstream file(table.path, std::ios::binary | std::ios::in | std::ios::out);
+    fstream file(table.path, ios::binary | ios::in | ios::out);
     if (!file.is_open()) {
         log("Error saving header of table " + table.scheme.name + ": can not open file " + table.path.string());
         return;
@@ -141,7 +141,7 @@ void Database::saveTableHeader(const Table& table) {
 }
 
 void Database::saveTablePointers(const Table &table) {
-    std::fstream file(table.path, std::ios::binary | std::ios::in | std::ios::out);
+    fstream file(table.path, ios::binary | ios::in);
     if (!file.is_open()) {
         log("Error saving pointers of table " + table.scheme.name + ": can not open file " + table.path.string());
         return;
@@ -149,20 +149,18 @@ void Database::saveTablePointers(const Table &table) {
 
     file.seekp(table.header.pointersStartShift);
     for(int i = 0; i < table.header.numberOfPointers; i++) {
-        int shift = (&table.pointers.at(i))->shift;
-        bool active = (&table.pointers.at(i))->active;
-
-        file.write(reinterpret_cast<const char*>(shift), sizeof(shift));
-        file.write(reinterpret_cast<const char*>(active), sizeof(active));
+        file.write(reinterpret_cast<const char*>(&(table.pointers.at(i).shift)), sizeof(table.pointers.at(i).shift));
     }
     file.close();
+
+    log("Pointers (" + to_string(table.pointers.size()) + ") of table " + table.scheme.name + " was serialized to file " + table.path.string());
 }
 
 /**
  * Completely rewrites all schemes.
  */
 void Database::saveAllTablesSchemes() {
-    std::fstream file(schemesPath, std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
+    fstream file(schemesPath, ios::binary | ios::in | ios::out | ios::trunc);
     if (!file.is_open()) {
         log("Error saving schemes of tables: can not open file " + schemesPath.string());
         return;
@@ -189,7 +187,7 @@ void Database::saveAllTablesSchemes() {
  * Completely rewrites all constraints.
  */
 void Database::saveAllTablesConstraints() {
-    std::fstream file(constraintsPath, std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
+    fstream file(constraintsPath, ios::binary | ios::in | ios::out | ios::trunc);
     if (!file.is_open()) {
         log("Error saving constraints of tables: can not open file " + constraintsPath.string());
         return;
@@ -201,7 +199,7 @@ void Database::saveAllTablesConstraints() {
         for(int i = 0; i < table.scheme.fields.size(); i++) {
             FieldDescription field = table.scheme.fields.at(i);
 
-            std::string constraintsStringBuilder;
+            string constraintsStringBuilder;
 
             if(field.IS_PRIMARY_KEY) {
                 constraintsStringBuilder += Util::GET_FIELD_CONSTRAINT_NAME(FieldConstraints::PRIMARY_KEY);
@@ -230,38 +228,38 @@ void Database::saveAllTablesConstraints() {
     file.close();
 }
 
-void Database::readTable(const std::string& tableName) {
+void Database::readTable(const string& tableName) {
     Table table;
     table.path = dirPath / (tableName + ".data");
 
     TableScheme scheme;
     scheme.name = tableName;
-    scheme.fields = std::vector<FieldDescription>();
+    scheme.fields = vector<FieldDescription>();
 
-    std::fstream schemesFile(schemesPath, std::ios::binary | std::ios::in);
+    fstream schemesFile(schemesPath, ios::binary | ios::in);
     if (!schemesFile.is_open()) {
-        throw std::invalid_argument("Cannot open schemes file " + schemesPath.string());
+        throw invalid_argument("Cannot open schemes file " + schemesPath.string());
     }
-    std::fstream constraintsFile(constraintsPath, std::ios::binary | std::ios::in);
+    fstream constraintsFile(constraintsPath, ios::binary | ios::in);
     if (!constraintsFile.is_open()) {
-        throw std::invalid_argument("Cannot open constraints file " + constraintsPath.string());
+        throw invalid_argument("Cannot open constraints file " + constraintsPath.string());
     }
-    std::fstream dataFile(table.path, std::ios::binary | std::ios::in);
+    fstream dataFile(table.path, ios::binary | ios::in);
     if (!constraintsFile.is_open()) {
-        throw std::invalid_argument("Cannot open data file " + (dirPath / (scheme.name + ".data")).string());
+        throw invalid_argument("Cannot open data file " + (dirPath / (scheme.name + ".data")).string());
     }
 
     // read scheme
-    std::string line;
-    while(std::getline(schemesFile, line)) {
+    string line;
+    while(getline(schemesFile, line)) {
         if(!line.empty()) {
-            std::vector<std::string> leftAndRightParts = Util::splitByDelimiter(line, '{');
+            vector<string> leftAndRightParts = Util::splitByDelimiter(line, '{');
 
             if(leftAndRightParts.at(0) == tableName) {
-                std::string fieldsString = leftAndRightParts.at(1).substr(0, leftAndRightParts.at(1).size() - 1);
+                string fieldsString = leftAndRightParts.at(1).substr(0, leftAndRightParts.at(1).size() - 1);
 
                 for(auto &fieldString: Util::splitByDelimiter(fieldsString, ',')) {
-                    std::vector<std::string> nameAndType = Util::splitByDelimiter(fieldString, ' ');
+                    vector<string> nameAndType = Util::splitByDelimiter(fieldString, ' ');
                     FieldDescription fieldDescription(nameAndType.at(0),
                                                       Util::PARSE_FIELD_TYPE(nameAndType.at(1)));
 
@@ -273,30 +271,32 @@ void Database::readTable(const std::string& tableName) {
     log("Parsed scheme of \"" + scheme.name + "\" from " + schemesPath.string());
 
     // read constraints
-    while(std::getline(constraintsFile, line)) {
+    while(getline(constraintsFile, line)) {
         if(!line.empty()) {
-            std::vector<std::string> leftAndRightParts = Util::splitByDelimiter(line, '{');
+            vector<string> leftAndRightParts = Util::splitByDelimiter(line, '{');
 
             if(leftAndRightParts.at(0) == tableName) {
-                std::string fieldStringContent = leftAndRightParts.at(1).substr(0, leftAndRightParts.at(1).size() - 1);
-                std::vector<std::string> fieldsConstraintsArrays = Util::splitByDelimiter(fieldStringContent, ',');
+                string fieldStringContent = leftAndRightParts.at(1).substr(0, leftAndRightParts.at(1).size() - 1);
+                vector<string> fieldsConstraintsArrays = Util::splitByDelimiter(fieldStringContent, ',');
 
                 // we go through fields constraints, on each iteration get string of constraints and do stuff
                 for(int i = 0; i < fieldsConstraintsArrays.size(); i++) {
-                    std::string constraintsString = fieldsConstraintsArrays.at(i);
-                    std::vector<std::string> constraintsArray = Util::splitByDelimiter(constraintsString, ' ');
+                    if(!fieldsConstraintsArrays.at(i).empty()) {
+                        string constraintsString = fieldsConstraintsArrays.at(i);
+                        vector<string> constraintsArray = Util::splitByDelimiter(constraintsString, ' ');
 
-                    for(int j = 0; j < constraintsArray.size(); j++) {
-                        FieldConstraints constraint = Util::PARSE_FIELD_CONSTRAINT(constraintsArray.at(j));
+                        for(int j = 0; j < constraintsArray.size(); j++) {
+                            FieldConstraints constraint = Util::PARSE_FIELD_CONSTRAINT(constraintsArray.at(j));
 
-                        if(constraint == FieldConstraints::UNIQUE) scheme.fields.at(i).IS_UNIQUE = true;
-                        if(constraint == FieldConstraints::NULLABLE) scheme.fields.at(i).NULLABLE = true;
-                        if(constraint == FieldConstraints::PRIMARY_KEY) scheme.fields.at(i).IS_PRIMARY_KEY = true;
+                            if(constraint == FieldConstraints::UNIQUE) scheme.fields.at(i).IS_UNIQUE = true;
+                            if(constraint == FieldConstraints::NULLABLE) scheme.fields.at(i).NULLABLE = true;
+                            if(constraint == FieldConstraints::PRIMARY_KEY) scheme.fields.at(i).IS_PRIMARY_KEY = true;
 
-                        if(constraint == FieldConstraints::FOREIGN_KEY) {
-                            scheme.fields.at(i).IS_FOREIGN_KEY = true;
-                            scheme.fields.at(i).REFERENCE = constraintsArray.at(constraintsArray.size() - 1);
-                            break;
+                            if(constraint == FieldConstraints::FOREIGN_KEY) {
+                                scheme.fields.at(i).IS_FOREIGN_KEY = true;
+                                scheme.fields.at(i).REFERENCE = constraintsArray.at(constraintsArray.size() - 1);
+                                break;
+                            }
                         }
                     }
                 }
@@ -311,13 +311,15 @@ void Database::readTable(const std::string& tableName) {
     log("Parsed header of \"" + scheme.name + "\" from " + table.path.string());
 
     // read pointers
-    std::vector<Pointer> pointers;
+    vector<Pointer> pointers;
     for(int i = 0; i < header.numberOfPointers; i++) {
         Pointer pointer;
-        dataFile.read(reinterpret_cast<char*>(&pointer), sizeof(pointer));
+        //TODO: instead of "5" there must be sizeof(Pointer), but it gives 8. Why? Idk...
+        dataFile.read(reinterpret_cast<char*>(&pointer), 4);
         pointers.push_back(pointer);
+
     }
-    log("Parsed " + std::to_string(pointers.size()) + " pointers of \"" + scheme.name + "\" from " + table.path.string());
+    log("Parsed " + to_string(pointers.size()) + " pointers of \"" + scheme.name + "\" from " + table.path.string());
 
 
     table.scheme = scheme;
@@ -328,18 +330,18 @@ void Database::readTable(const std::string& tableName) {
 }
 
 void Database::readAllTables() {
-    std::fstream file(configurationPath, std::ios::in);
+    fstream file(configurationPath, ios::in);
     if (!file.is_open()) {
-        throw std::invalid_argument("Cannot open configuration file");
+        throw invalid_argument("Cannot open configuration file");
     }
 
-    std::string line;
-    while (std::getline(file, line)) {
+    string line;
+    while (getline(file, line)) {
         if(!line.empty()) {
             try {
                 readTable(line);
-            } catch(std::invalid_argument const &e) {
-                std::string message = e.what();
+            } catch(invalid_argument const &e) {
+                string message = e.what();
                 log("Cannot read table: " + message);
             }
         }
@@ -358,7 +360,7 @@ void Database::saveAllTables() {
     log("All tables was saved");
 }
 
-void Database::dropTable(const std::string& tableName) {
+void Database::dropTable(const string& tableName) {
     bool tableFound = false;
     int tableToDropIndex;
     for(int i = 0; i < tables.size(); i++) {
@@ -369,11 +371,11 @@ void Database::dropTable(const std::string& tableName) {
     }
 
     if(!tableFound) {
-        throw std::invalid_argument("Table with name " + tableName + " not found!");
+        throw invalid_argument("Table with name " + tableName + " not found!");
     } else {
         auto tableIterator = tables.begin() + tableToDropIndex;
 
-        std::remove(tableIterator->path.string().c_str());
+        remove(tableIterator->path.string().c_str());
         tables.erase(tableIterator);
 
         saveAllTables();
@@ -381,11 +383,142 @@ void Database::dropTable(const std::string& tableName) {
         log("DROP TABLE " + tableName);
     }
 
-    std::fstream file(configurationPath, std::ios::out | std::ios::trunc);
+    fstream file(configurationPath, ios::out | ios::trunc);
     for(auto &table: tables) {
         file << table.scheme.name << "\n";
     }
 }
+
+Table* Database::getTableByName(const string& tableName) {
+    for(auto &table: tables) {
+        if (table.scheme.name == tableName) {
+            return &table;
+        }
+    }
+    throw std::invalid_argument("Table with tableName \"" + tableName + "\" not found!");
+}
+
+void Database::insert(Table* table, const vector<string>& columns, const vector<Value>& values) {
+    if(columns.size() != values.size()) {
+        throw std::invalid_argument("Cannot insert values into " + table->scheme.name + ": different length between columns and values arrays");
+    }
+
+    ofstream file(table->path, ios::out | ios::binary | ios::app);
+    if(!file.is_open()) throw std::invalid_argument("Cannot insert values into " + table->scheme.name + ": cannot open file with data");
+
+    vector<size_t> valuesSizes;
+    int valuesDataSize = 0;
+    for(int i = 0; i < columns.size(); i++) {
+        FieldDescription fieldDescription = table->scheme.getFieldDescriptionByName(columns.at(i));
+
+        size_t value_size = Util::getSizeOfValue(fieldDescription, values.at(i));
+
+        valuesSizes.push_back(value_size);
+        valuesDataSize += Util::getSizeOfValue(fieldDescription, values.at(i));
+    }
+
+    char* buffer = static_cast<char *>(malloc(valuesDataSize));
+    size_t shift = 0;
+    for(int i = 0; i < values.size(); i++) {
+        memcpy(buffer + shift, values.at(i).data, valuesSizes.at(i));
+        shift += valuesSizes.at(i);
+    }
+
+    // TODO: think about safety
+    table->header.dataStartShift += valuesDataSize;
+    table->header.numberOfPointers += 1;
+    table->header.pointersEndShift += sizeof(Pointer);
+    table->pointers.emplace_back(table->header.dataStartShift);
+
+    file.seekp(table->header.dataStartShift);
+    file.write(buffer, valuesDataSize);
+    file.close();
+
+    log("Inserted into \"" + table->scheme.name + "\" " + to_string(valuesDataSize) + " bytes of data");
+
+    saveTableHeader(*table);
+    saveTablePointers(*table);
+
+    free(buffer);
+}
+
+vector<vector<Value>> Database::readAllValuesFromTable(const Table &table) {
+    int dataSize = table.header.dataStartShift;
+    char* buffer = static_cast<char *>(malloc(dataSize));
+
+    ifstream file (table.path, ios::binary | ios::in);
+    if(!file.is_open()) throw invalid_argument("Cannot read data from " + table.path.string());
+
+    file.seekg(DATA_FILE_SIZE - table.header.dataStartShift);
+    file.read(buffer, dataSize);
+    file.close();
+
+    vector<vector<Value>> rows;
+
+    for(auto &pointer: table.pointers) {
+        vector<Value> values;
+
+        size_t shift = dataSize - pointer.shift;
+
+        for(const auto & field : table.scheme.fields) {
+            if(field.type == FieldTypes::INT) {
+                values.emplace_back(FieldTypes::INT, static_cast<char*>(buffer) + shift);
+                shift += sizeof(int);
+            }
+            if(field.type == FieldTypes::FLOAT) {
+                values.emplace_back(FieldTypes::FLOAT, static_cast<char*>(buffer) + shift);
+                shift += sizeof(float);
+            }
+            if(field.type == FieldTypes::VARCHAR) {
+                size_t valueSize;
+                Value value(FieldTypes::VARCHAR, static_cast<char *>(buffer) + shift);
+                valueSize = Util::getSizeOfValue(field, value);
+                values.push_back(value);
+                shift += valueSize;
+            }
+            if(field.type == FieldTypes::TEXT) {
+                size_t valueSize;
+                Value value(FieldTypes::TEXT, static_cast<char *>(buffer) + shift);
+                valueSize = Util::getSizeOfValue(field, value);
+                values.push_back(value);
+                shift += valueSize;
+            }
+        }
+
+        rows.push_back(values);
+    }
+
+    std::free(buffer);
+
+    return rows;
+}
+
+void Database::insert(Table *table, vector<Value> values) {
+    vector<string> columns;
+    for(auto & fieldDescription : table->scheme.fields) {
+        columns.push_back(fieldDescription.name);
+    }
+
+    insert(table, columns, values);
+}
+
+void Database::removeById(Table *table, int id) {
+
+}
+
+
+//bool Database::validateValueInserting(const Table &table, const FieldDescription &fieldDescription, const Value &value) {
+//    for(auto &description: table.scheme.fields) {
+//        if(description.name == fieldDescription.name) {
+//
+//        }
+//    }
+//
+//    throw invalid_argument("No field named \"" + fieldDescription.name + "\" in scheme \"" + table.scheme.name + "\"");
+//}
+
+
+
 
 
 

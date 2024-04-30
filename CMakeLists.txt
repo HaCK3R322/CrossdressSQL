@@ -14,4 +14,5 @@ add_executable(CrossdressSQL main.cpp
         entities/FieldConstraints.h
         entities/Table.h
         Util.h
+        entities/Value.h
 )

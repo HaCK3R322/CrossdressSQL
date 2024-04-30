@@ -8,6 +8,7 @@
 #include <string>
 #include "entities/FieldTypes.h"
 #include "entities/FieldConstraints.h"
+#include "entities/Value.h"
 
 class Util {
 public:
@@ -17,15 +18,18 @@ public:
                 return "INT";
             case FieldTypes::FLOAT:
                 return "FLOAT";
-            case FieldTypes::STRING:
-                return "STRING";
+            case FieldTypes::VARCHAR:
+                return "VARCHAR";
+            case FieldTypes::TEXT:
+                return "TEXT";
         }
     }
 
     static FieldTypes PARSE_FIELD_TYPE(std::string typeString) {
         if(typeString == "INT") return FieldTypes::INT;
         if(typeString == "FLOAT") return FieldTypes::FLOAT;
-        if(typeString == "STRING") return FieldTypes::STRING;
+        if(typeString == "VARCHAR") return FieldTypes::VARCHAR;
+        if(typeString == "TEXT") return FieldTypes::TEXT;
         throw std::invalid_argument("Cannot parse field type \"" + typeString +"\"");
     }
 
@@ -89,6 +93,29 @@ public:
 
         result.push_back(str.substr(start));
         return result;
+    }
+
+    static int readInt(void* data) {
+        int value;
+        memcpy(&value, data, sizeof(int));
+
+        return value;
+    }
+
+    static size_t getSizeOfValue(const FieldDescription& correspondingField, const Value& value) {
+        if(value.type == FieldTypes::INT) return 4;
+        if(value.type == FieldTypes::FLOAT) return 4;
+        if(value.type == FieldTypes::VARCHAR) return correspondingField.varcharSize;
+        if(value.type == FieldTypes::TEXT) {
+            size_t size = 0;
+            char* pointer = static_cast<char *>(value.data);
+            while (pointer[size] != '\0') {
+                size += 1;
+            }
+            return size + 1;
+        }
+
+        throw std::invalid_argument("Cannot calculate size of value.");
     }
 };
 

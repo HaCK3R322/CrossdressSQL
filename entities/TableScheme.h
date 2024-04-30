@@ -14,6 +14,13 @@ class TableScheme {
 public:
     std::string name;
     std::vector<FieldDescription> fields;
+
+    FieldDescription getFieldDescriptionByName(const std::string& fieldName) const {
+        for(auto & field : fields) {
+            if(field.name == fieldName) return field;
+        }
+        throw std::invalid_argument("Cannot get field description for field \"" + fieldName + "\" of scheme \"" + name + "\"");
+    }
 };
 
 #endif //CROSSDRESSSQL_TABLESCHEME_H

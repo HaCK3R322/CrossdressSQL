@@ -8,7 +8,8 @@
 enum class FieldTypes {
     INT,
     FLOAT,
-    STRING
+    VARCHAR,
+    TEXT
 };
 
 #endif //CROSSDRESSSQL_FIELDTYPES_H

@@ -19,9 +19,10 @@ public:
     bool IS_PRIMARY_KEY = false;
     bool IS_UNIQUE = false;
     bool NULLABLE = false;
-
     bool IS_FOREIGN_KEY = false;
-    std::string REFERENCE;
+
+    std::string REFERENCE; // will be set if IS_FOREIGN_KEY
+    int varcharSize = 0; // will be set if type is VARCHAR
 
     FieldDescription(std::string name, FieldTypes type) : name(std::move(name)), type(type) {}
 };

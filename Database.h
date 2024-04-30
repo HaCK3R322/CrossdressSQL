@@ -21,36 +21,53 @@
 #include "entities/Pointer.h"
 #include "entities/Table.h"
 #include "Util.h"
+#include "entities/Value.h"
+
+using namespace std;
 
 class Database {
 public:
     void init();
 
     void createTable(const TableScheme& scheme);
-    void dropTable(const std::string& tableName);
+    void dropTable(const string& tableName);
+
+    //TODO: constraints check
+    void insert(Table* table, const vector<string>& columns, const vector<Value>& values);
+    void insert(Table* table, vector<Value> values);
+
+    void removeById(Table* table, int id);
 //private:
-    std::string SCHEMES_FILENAME = "schemes.conf";
-    std::string CONSTRAINS_FILENAME = "constraints.conf";
-    std::filesystem::path dirPath;
-    std::filesystem::path configurationPath;
-    std::filesystem::path schemesPath;
-    std::filesystem::path constraintsPath;
+    string SCHEMES_FILENAME = "schemes.conf";
+    string CONSTRAINS_FILENAME = "constraints.conf";
+    filesystem::path dirPath;
+    filesystem::path configurationPath;
+    filesystem::path schemesPath;
+    filesystem::path constraintsPath;
 //    const long long DATA_FILE_SIZE = 1LL * 1024 * 1024 * 1024; // 1gb
     const long long DATA_FILE_SIZE = 1LL * 1024 * 1024; // 1mb
 
-    std::string name;
-    std::vector<Table> tables;
+    string name;
+    vector<Table> tables;
 
-    bool tableExists(const std::string& tableName);
+    // tables management
+    bool tableExists(const string& tableName);
+
+    Table* getTableByName(const string& tableName);
     void saveAllTablesSchemes();
     void saveAllTablesConstraints();
     void saveTableHeader(const Table& table);
     void saveTablePointers(const Table& table);
-    void readTable(const std::string& tableName);
-    void readAllTables();
     void saveAllTables();
 
-    void log(const std::string& message);
+    void readTable(const string& tableName);
+    void readAllTables();
+
+    vector<vector<Value>> readAllValuesFromTable(const Table& table);
+
+    bool validateValueInserting(const Table& table, const FieldDescription& fieldDescription, const Value& value);
+
+    void log(const string& message);
 };
 
 
