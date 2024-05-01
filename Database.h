@@ -36,6 +36,7 @@ public:
     void insert(const string& tableName, const vector<string>& columns, const vector<Value>& values);
     void insert(const string& tableName, vector<Value> values);
 
+    //TODO: change to removeByPrimaryKey(const string& tableName, Value keyValue)
     void removeById(const string& tableName, int id);
 //private:
     string SCHEMES_FILENAME = "schemes.conf";
@@ -65,7 +66,8 @@ public:
 
     vector<vector<Value>> readAllValuesFromTable(const Table& table);
 
-    bool validateValueInserting(const Table& table, const FieldDescription& fieldDescription, const Value& value);
+    void validateValueInserting(const Table& table, const FieldDescription& fieldDescription, const Value& value);
+    bool primaryKeyExists(const Table& table, const Value& value);
 
     void log(const string& message);
 };

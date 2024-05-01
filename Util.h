@@ -96,12 +96,19 @@ public:
     }
 
     static int readInt(void* data) {
-        int value = 0;
-        memcpy(&value, data, sizeof(int));
+        return *(reinterpret_cast<int*>(data));
+    }
 
-        std::cout << value << std::endl;
+    static float readFloat(void* data) {
+        return *(reinterpret_cast<float*>(data));
+    }
 
-        return value;
+    static std::string readText(void* data) {
+        return reinterpret_cast<char*>(data);
+    }
+
+    static char* readVarchar(void* data) {
+        return reinterpret_cast<char*>(data);
     }
 
     static size_t getSizeOfValue(const FieldDescription& correspondingField, const Value& value) {

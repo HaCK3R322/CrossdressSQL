@@ -403,9 +403,11 @@ Table* Database::getTableByName(const string& tableName) {
 void Database::insert(const string& tableName, const vector<string>& columns, const vector<Value>& values) {
     Table* table = getTableByName(tableName);
 
+    // constraints check
     if(columns.size() != values.size()) {
         throw std::invalid_argument("Cannot insert values into " + table->scheme.name + ": different length between columns and values arrays");
     }
+
 
     ofstream file(table->path, ios::out | ios::binary | ios::app);
     if(!file.is_open()) throw std::invalid_argument("Cannot insert values into " + table->scheme.name + ": cannot open file with data");
@@ -450,9 +452,6 @@ void Database::insert(const string& tableName, const vector<string>& columns, co
 vector<vector<Value>> Database::readAllValuesFromTable(const Table &table) {
     int dataSize = table.header.dataStartShift;
     char* buffer = static_cast<char *>(malloc(dataSize));
-    for(int i = 0; i < dataSize; i++) {
-        *(buffer + i) = 0xAAAAAAAA;
-    }
 
     ifstream file(table.path, ios::binary);
     if(!file.is_open()) throw invalid_argument("Cannot read data from " + table.path.string());
@@ -471,28 +470,10 @@ vector<vector<Value>> Database::readAllValuesFromTable(const Table &table) {
         size_t shift = dataSize - pointer.shift;
 
         for(const auto & field : table.scheme.fields) {
-            if(field.type == FieldTypes::INT) {
-                values.emplace_back(FieldTypes::INT, reinterpret_cast<char*>(buffer) + shift);
-                shift += sizeof(int);
-            }
-            if(field.type == FieldTypes::FLOAT) {
-                values.emplace_back(FieldTypes::FLOAT, static_cast<char*>(buffer) + shift);
-                shift += sizeof(float);
-            }
-            if(field.type == FieldTypes::VARCHAR) {
-                size_t valueSize;
-                Value value(FieldTypes::VARCHAR, static_cast<char *>(buffer) + shift);
-                valueSize = Util::getSizeOfValue(field, value);
-                values.push_back(value);
-                shift += valueSize;
-            }
-            if(field.type == FieldTypes::TEXT) {
-                size_t valueSize;
-                Value value(FieldTypes::TEXT, static_cast<char *>(buffer) + shift);
-                valueSize = Util::getSizeOfValue(field, value);
-                values.push_back(value);
-                shift += valueSize;
-            }
+            Value value(field.type, static_cast<char *>(buffer) + shift);
+            size_t value_size = Util::getSizeOfValue(field, value);
+            values.push_back(value);
+            shift += value_size;
         }
 
         rows.push_back(values);
@@ -541,16 +522,89 @@ void Database::removeById(const string &tableName, int id) {
 }
 
 
+void Database::validateValueInserting(const Table &table, const FieldDescription &fieldDescription, const Value &value) {
+    for(int i = 0; i < table.scheme.fields.size(); i++) {
+        FieldDescription description = table.scheme.fields.at(i);
 
-//bool Database::validateValueInserting(const Table &table, const FieldDescription &fieldDescription, const Value &value) {
-//    for(auto &description: table.scheme.fields) {
-//        if(description.name == fieldDescription.name) {
-//
-//        }
-//    }
-//
-//    throw invalid_argument("No field named \"" + fieldDescription.name + "\" in scheme \"" + table.scheme.name + "\"");
-//}
+        if(description.name == fieldDescription.name) {
+            if (fieldDescription.type != value.type)
+                throw invalid_argument("Error inserting value into + \""
+                                       + description.name
+                                       + "\": type "
+                                       + Util::GET_FIELD_TYPE_NAME(value.type)
+                                       + " cannot be casted to type "
+                                       + Util::GET_FIELD_TYPE_NAME(description.type));
+
+            if (description.IS_UNIQUE || description.IS_PRIMARY_KEY) {
+                auto values = readAllValuesFromTable(table);
+
+                int valuePos = 0;
+                while (table.scheme.fields.at(valuePos).name != description.name) valuePos += 1;
+
+                size_t valueSize = Util::getSizeOfValue(description, value);
+
+                auto uniqueness_exception = invalid_argument("Error inserting value into + \""
+                                                             + description.name
+                                                             + "\": value not unique");
+
+                bool unique = true;
+                for(auto & row : values) {
+                    Value existingValue = row.at(valuePos);
+                    switch (existingValue.type) {
+                        case FieldTypes::INT:
+                        case FieldTypes::FLOAT:
+                            if(Util::readInt(existingValue.data) == Util::readInt(value.data)) unique = false;
+                            break;
+
+                        case FieldTypes::VARCHAR: {
+                            char* existingVarchar = Util::readVarchar(existingValue.data);
+                            char* newVarchar = Util::readVarchar(value.data);
+                            bool varcharsEqual = true;
+                            for(int j = 0; j < description.varcharSize; j++) {
+                                if(*(existingVarchar + j) != *(newVarchar + j)) {
+                                    varcharsEqual = false;
+                                    break;
+                                }
+                            }
+                            unique = !varcharsEqual;
+                            break;
+                        }
+
+                        case FieldTypes::TEXT: {
+                            string value1_text = Util::readText(existingValue.data);
+                            string value2_text = Util::readText(value.data);
+
+                            unique = value1_text != value2_text;
+                            break;
+                        }
+                    }
+                }
+
+                if(!unique) throw invalid_argument("Error inserting value into + \""
+                                                   + description.name
+                                                   + "\": value not unique");
+            }
+
+            if(description.IS_FOREIGN_KEY) {
+                string referenceTableName = fieldDescription.REFERENCE;
+
+                if(!tableExists(referenceTableName)) throw invalid_argument("Error inserting value into + \""
+                                                                                + description.name
+                                                                                + "\": reference for foreign key not found");
+
+
+            }
+
+            return;
+        }
+    }
+
+    throw invalid_argument("No field named \"" + fieldDescription.name + "\" in scheme \"" + table.scheme.name + "\"");
+}
+
+bool Database::primaryKeyExists(const Table &table, const Value &value) {
+
+}
 
 
 
