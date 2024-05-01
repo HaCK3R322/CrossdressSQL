@@ -330,6 +330,8 @@ void Database::readTable(const string& tableName) {
 }
 
 void Database::readAllTables() {
+    this->tables = vector<Table>();
+
     fstream file(configurationPath, ios::in);
     if (!file.is_open()) {
         throw invalid_argument("Cannot open configuration file");
@@ -398,7 +400,9 @@ Table* Database::getTableByName(const string& tableName) {
     throw std::invalid_argument("Table with tableName \"" + tableName + "\" not found!");
 }
 
-void Database::insert(Table* table, const vector<string>& columns, const vector<Value>& values) {
+void Database::insert(const string& tableName, const vector<string>& columns, const vector<Value>& values) {
+    Table* table = getTableByName(tableName);
+
     if(columns.size() != values.size()) {
         throw std::invalid_argument("Cannot insert values into " + table->scheme.name + ": different length between columns and values arrays");
     }
@@ -417,10 +421,11 @@ void Database::insert(Table* table, const vector<string>& columns, const vector<
         valuesDataSize += Util::getSizeOfValue(fieldDescription, values.at(i));
     }
 
-    char* buffer = static_cast<char *>(malloc(valuesDataSize));
+    char* buffer = reinterpret_cast<char *>(malloc(valuesDataSize));
     size_t shift = 0;
     for(int i = 0; i < values.size(); i++) {
         memcpy(buffer + shift, values.at(i).data, valuesSizes.at(i));
+
         shift += valuesSizes.at(i);
     }
 
@@ -430,7 +435,7 @@ void Database::insert(Table* table, const vector<string>& columns, const vector<
     table->header.pointersEndShift += sizeof(Pointer);
     table->pointers.emplace_back(table->header.dataStartShift);
 
-    file.seekp(table->header.dataStartShift);
+    file.seekp(DATA_FILE_SIZE - table->header.dataStartShift);
     file.write(buffer, valuesDataSize);
     file.close();
 
@@ -445,12 +450,17 @@ void Database::insert(Table* table, const vector<string>& columns, const vector<
 vector<vector<Value>> Database::readAllValuesFromTable(const Table &table) {
     int dataSize = table.header.dataStartShift;
     char* buffer = static_cast<char *>(malloc(dataSize));
+    for(int i = 0; i < dataSize; i++) {
+        *(buffer + i) = 0xAAAAAAAA;
+    }
 
-    ifstream file (table.path, ios::binary | ios::in);
+    ifstream file(table.path, ios::binary);
     if(!file.is_open()) throw invalid_argument("Cannot read data from " + table.path.string());
 
-    file.seekg(DATA_FILE_SIZE - table.header.dataStartShift);
+    file.clear();
+    file.seekg(-dataSize, ios::end);
     file.read(buffer, dataSize);
+
     file.close();
 
     vector<vector<Value>> rows;
@@ -462,7 +472,7 @@ vector<vector<Value>> Database::readAllValuesFromTable(const Table &table) {
 
         for(const auto & field : table.scheme.fields) {
             if(field.type == FieldTypes::INT) {
-                values.emplace_back(FieldTypes::INT, static_cast<char*>(buffer) + shift);
+                values.emplace_back(FieldTypes::INT, reinterpret_cast<char*>(buffer) + shift);
                 shift += sizeof(int);
             }
             if(field.type == FieldTypes::FLOAT) {
@@ -493,18 +503,43 @@ vector<vector<Value>> Database::readAllValuesFromTable(const Table &table) {
     return rows;
 }
 
-void Database::insert(Table *table, vector<Value> values) {
+void Database::insert(const std::string& tableName, vector<Value> values) {
+    Table* table = getTableByName(tableName);
+
     vector<string> columns;
     for(auto & fieldDescription : table->scheme.fields) {
         columns.push_back(fieldDescription.name);
     }
 
-    insert(table, columns, values);
+    insert(tableName, columns, values);
 }
 
-void Database::removeById(Table *table, int id) {
 
+void Database::removeById(const string &tableName, int id) {
+    Table* table = getTableByName(tableName);
+
+    int primaryKeyPos = 0;
+    for(int i = 0; i < table->scheme.fields.size(); i++) {
+        if(table->scheme.fields.at(i).IS_PRIMARY_KEY) {
+            primaryKeyPos = i;
+        }
+    }
+
+    vector<vector<Value>> values = readAllValuesFromTable(*table);
+
+    for(int i = 0; i < values.size(); i++) {
+        int value_id = Util::readInt(values.at(i).at(primaryKeyPos).data);
+        if(value_id == id) {
+            table->pointers.erase(table->pointers.begin() + i);
+            table->header.numberOfPointers -= 1;
+
+            saveTableHeader(*table);
+            saveTablePointers(*table);
+            break;
+        }
+    }
 }
+
 
 
 //bool Database::validateValueInserting(const Table &table, const FieldDescription &fieldDescription, const Value &value) {

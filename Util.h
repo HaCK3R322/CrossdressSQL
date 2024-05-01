@@ -96,8 +96,10 @@ public:
     }
 
     static int readInt(void* data) {
-        int value;
+        int value = 0;
         memcpy(&value, data, sizeof(int));
+
+        std::cout << value << std::endl;
 
         return value;
     }

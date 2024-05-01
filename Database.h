@@ -33,10 +33,10 @@ public:
     void dropTable(const string& tableName);
 
     //TODO: constraints check
-    void insert(Table* table, const vector<string>& columns, const vector<Value>& values);
-    void insert(Table* table, vector<Value> values);
+    void insert(const string& tableName, const vector<string>& columns, const vector<Value>& values);
+    void insert(const string& tableName, vector<Value> values);
 
-    void removeById(Table* table, int id);
+    void removeById(const string& tableName, int id);
 //private:
     string SCHEMES_FILENAME = "schemes.conf";
     string CONSTRAINS_FILENAME = "constraints.conf";
