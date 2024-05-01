@@ -126,6 +126,55 @@ public:
 
         throw std::invalid_argument("Cannot calculate size of value.");
     }
+
+    static size_t calcSizeOfValueData(const FieldDescription& correspondingField, const void* data) {
+        if(correspondingField.type == FieldTypes::INT) return 4;
+        if(correspondingField.type == FieldTypes::FLOAT) return 4;
+        if(correspondingField.type == FieldTypes::VARCHAR) return correspondingField.varcharSize;
+        if(correspondingField.type == FieldTypes::TEXT) {
+            size_t size = 0;
+            while (static_cast<const char*>(data)[size] != '\0') {
+                size += 1;
+            }
+            return size + 1;
+        }
+
+        throw std::invalid_argument("Cannot calculate size of data.");
+    }
+
+    static std::string convertValueToString(const FieldDescription& correspondingField, const Value& value) {
+        if(value.type == FieldTypes::INT) return std::to_string(readInt(value.data));
+        if(value.type == FieldTypes::FLOAT) return std::to_string(readFloat(value.data));
+        if(value.type == FieldTypes::VARCHAR) {
+            char* str = reinterpret_cast<char*>(std::malloc(correspondingField.varcharSize + 1));
+            for(int i = 0; i < correspondingField.varcharSize; i++) {
+                *(str + i) = *(Util::readVarchar(value.data) + i);
+            }
+            *(str + correspondingField.varcharSize) = '\0';
+            free(str);
+
+            return str;
+        }
+        if(value.type == FieldTypes::TEXT) {
+            std::string str(reinterpret_cast<char*>(value.data));
+            return str;
+        };
+
+        throw std::invalid_argument("Cannot convert value to string.");
+    }
+
+    static std::string convertRowToString(const TableScheme& tableScheme, const std::vector<Value>& values) {
+        std::string str = "(";
+
+        for(int i = 0; i < tableScheme.fields.size(); i++) {
+            str += convertValueToString(tableScheme.fields.at(i), values.at(i));
+
+            if(i != tableScheme.fields.size() - 1) str += ",";
+        }
+        str += ")";
+
+        return str;
+    }
 };
 
 #endif //CROSSDRESSSQL_UTIL_H

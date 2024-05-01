@@ -67,6 +67,8 @@ public:
     vector<vector<Value>> readAllValuesFromTable(const Table& table);
 
     void validateValueInserting(const Table& table, const FieldDescription& fieldDescription, const Value& value);
+    string getPrimaryKeyName(const Table& table);
+    FieldDescription getDescriptionByName(const Table& table, const string& fieldName);
     bool primaryKeyExists(const Table& table, const Value& value);
 
     void log(const string& message);

@@ -417,6 +417,8 @@ void Database::insert(const string& tableName, const vector<string>& columns, co
     for(int i = 0; i < columns.size(); i++) {
         FieldDescription fieldDescription = table->scheme.getFieldDescriptionByName(columns.at(i));
 
+        validateValueInserting(*table, fieldDescription, values.at(i));
+
         size_t value_size = Util::getSizeOfValue(fieldDescription, values.at(i));
 
         valuesSizes.push_back(value_size);
@@ -470,8 +472,9 @@ vector<vector<Value>> Database::readAllValuesFromTable(const Table &table) {
         size_t shift = dataSize - pointer.shift;
 
         for(const auto & field : table.scheme.fields) {
-            Value value(field.type, static_cast<char *>(buffer) + shift);
-            size_t value_size = Util::getSizeOfValue(field, value);
+            void* data = static_cast<char *>(buffer) + shift;
+            size_t value_size = Util::calcSizeOfValueData(field, data);
+            Value value(field.type, data, value_size);
             values.push_back(value);
             shift += value_size;
         }
@@ -528,7 +531,7 @@ void Database::validateValueInserting(const Table &table, const FieldDescription
 
         if(description.name == fieldDescription.name) {
             if (fieldDescription.type != value.type)
-                throw invalid_argument("Error inserting value into + \""
+                throw invalid_argument("Error inserting value into \""
                                        + description.name
                                        + "\": type "
                                        + Util::GET_FIELD_TYPE_NAME(value.type)
@@ -540,12 +543,6 @@ void Database::validateValueInserting(const Table &table, const FieldDescription
 
                 int valuePos = 0;
                 while (table.scheme.fields.at(valuePos).name != description.name) valuePos += 1;
-
-                size_t valueSize = Util::getSizeOfValue(description, value);
-
-                auto uniqueness_exception = invalid_argument("Error inserting value into + \""
-                                                             + description.name
-                                                             + "\": value not unique");
 
                 bool unique = true;
                 for(auto & row : values) {
@@ -580,7 +577,7 @@ void Database::validateValueInserting(const Table &table, const FieldDescription
                     }
                 }
 
-                if(!unique) throw invalid_argument("Error inserting value into + \""
+                if(!unique) throw invalid_argument("Error inserting value into \""
                                                    + description.name
                                                    + "\": value not unique");
             }
@@ -588,11 +585,12 @@ void Database::validateValueInserting(const Table &table, const FieldDescription
             if(description.IS_FOREIGN_KEY) {
                 string referenceTableName = fieldDescription.REFERENCE;
 
-                if(!tableExists(referenceTableName)) throw invalid_argument("Error inserting value into + \""
+                if(!tableExists(referenceTableName)) throw invalid_argument("Error inserting value into \""
                                                                                 + description.name
                                                                                 + "\": reference for foreign key not found");
-
-
+                if(!primaryKeyExists(*(getTableByName(referenceTableName)), value)) throw invalid_argument("Error inserting value into \""
+                                                                                                           + description.name
+                                                                                                           + "\": reference for foreign key not found");
             }
 
             return;
@@ -603,8 +601,62 @@ void Database::validateValueInserting(const Table &table, const FieldDescription
 }
 
 bool Database::primaryKeyExists(const Table &table, const Value &value) {
+    auto values = readAllValuesFromTable(table);
 
+    string keyName = getPrimaryKeyName(table);
+    FieldDescription description = getDescriptionByName(table, keyName);
+
+    int valuePos = 0;
+    while (table.scheme.fields.at(valuePos).name != keyName) valuePos += 1;
+
+    bool unique = true;
+    for(auto & row : values) {
+        Value existingValue = row.at(valuePos);
+        switch (existingValue.type) {
+            case FieldTypes::INT:
+            case FieldTypes::FLOAT:
+                if(Util::readInt(existingValue.data) == Util::readInt(value.data)) unique = false;
+                break;
+
+            case FieldTypes::VARCHAR: {
+                char* existingVarchar = Util::readVarchar(existingValue.data);
+                char* newVarchar = Util::readVarchar(value.data);
+                bool varcharsEqual = true;
+                for(int j = 0; j < description.varcharSize; j++) {
+                    if(*(existingVarchar + j) != *(newVarchar + j)) {
+                        varcharsEqual = false;
+                        break;
+                    }
+                }
+                unique = !varcharsEqual;
+                break;
+            }
+
+            case FieldTypes::TEXT: {
+                string value1_text = Util::readText(existingValue.data);
+                string value2_text = Util::readText(value.data);
+
+                unique = value1_text != value2_text;
+                break;
+            }
+        }
+    }
+
+    return !unique;
 }
+
+string Database::getPrimaryKeyName(const Table &table) {
+    for(auto &field : table.scheme.fields) {
+        if(field.IS_PRIMARY_KEY) return field.name;
+    }
+}
+
+FieldDescription Database::getDescriptionByName(const Table &table, const string& fieldName) {
+    for (auto & field : table.scheme.fields) {
+        if(field.name == fieldName) return field;
+    }
+}
+
 
 
 

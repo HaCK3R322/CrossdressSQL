@@ -4,14 +4,7 @@
 
 using namespace std;
 
-int main() {
-
-    try {
-        std::filesystem::remove_all("example");
-    } catch (const std::filesystem::filesystem_error& e) {
-        std::cerr << "Error deleting directory: " << e.what() << std::endl;
-    }
-
+TableScheme getStudentScheme() {
     TableScheme studentScheme;
     FieldDescription field1("id", FieldTypes::INT);
     field1.IS_PRIMARY_KEY = true;
@@ -23,6 +16,10 @@ int main() {
     studentScheme.name = "students";
     studentScheme.fields = studentFields;
 
+    return studentScheme;
+}
+
+TableScheme getAnimalScheme() {
     TableScheme animalsScheme;
     FieldDescription field3("id", FieldTypes::INT);
     field3.IS_PRIMARY_KEY = true;
@@ -34,6 +31,10 @@ int main() {
     animalsScheme.name = "animals";
     animalsScheme.fields = animalFields;
 
+    return animalsScheme;
+}
+
+TableScheme getTestScheme() {
     TableScheme testScheme;
     vector<FieldDescription> testFields;
 
@@ -54,6 +55,74 @@ int main() {
     testScheme.name = "test";
     testScheme.fields = testFields;
 
+    return testScheme;
+}
+
+void fillTestScheme(Database* db) {
+    int integer1 = 123;
+    int integer2 = 1234;
+    int integer3 = 12345;
+    float float1 = 0.14;
+    char* test_varchar_data1 = reinterpret_cast<char*>(malloc(10));
+    char* test_varchar_data2 = reinterpret_cast<char*>(malloc(10));
+    for(int i = 0; i < 10; i++) {
+        *(test_varchar_data1 + i) = '0' + i;
+        *(test_varchar_data2 + i) = 'a' + i;
+    }
+
+    string start_of_string_text("abc");
+
+    vector<string> testColumns = {"id", "1", "2", "3", "4", "5", "6"};
+    vector<Value> testValues;
+    vector<Value> testValues2;
+
+    int id1 = 111;
+    int id2 = 222;
+    int id3 = 333;
+
+    testValues.emplace_back(FieldTypes::INT, &id1, sizeof(int));
+    testValues.emplace_back(FieldTypes::INT, &integer1, 4);
+    testValues.emplace_back(FieldTypes::INT, &integer2, 4);
+    testValues.emplace_back(FieldTypes::INT, &integer3, 4);
+    testValues.emplace_back(FieldTypes::FLOAT, &float1, 4);
+    testValues.emplace_back(FieldTypes::VARCHAR, test_varchar_data1, 10);
+    testValues.emplace_back(FieldTypes::TEXT, start_of_string_text.data(), 4);
+
+    void* lol = start_of_string_text.data();
+    void* kek = malloc(start_of_string_text.size() + 1 + 4);
+    for(int i = 0; i < start_of_string_text.size() + 1 + 4; i++) {
+        *(reinterpret_cast<char*>(kek) + i) = 0xAA;
+    }
+    for(int i = 0; i < start_of_string_text.size() + 1; i++) {
+        memcpy((reinterpret_cast<char*>(kek)) + i, (reinterpret_cast<char*>(lol)) + i, 1);
+    }
+    int xd = 10;
+    free(kek);
+
+    testValues2.emplace_back(FieldTypes::INT, &id2, sizeof(int));
+    testValues2.emplace_back(FieldTypes::INT, &integer1, 4);
+    testValues2.emplace_back(FieldTypes::INT, &integer2, 4);
+    testValues2.emplace_back(FieldTypes::INT, &integer3, 4);
+    testValues2.emplace_back(FieldTypes::FLOAT, &float1, 4);
+    testValues2.emplace_back(FieldTypes::VARCHAR, test_varchar_data2, 10);
+    testValues2.emplace_back(FieldTypes::TEXT, start_of_string_text.data(), 4);
+
+    db->insert("test",  testColumns, testValues2);
+    db->insert("test", testColumns, testValues);
+}
+
+int main() {
+
+    try {
+        std::filesystem::remove_all("example");
+    } catch (const std::filesystem::filesystem_error& e) {
+        std::cerr << "Error deleting directory: " << e.what() << std::endl;
+    }
+
+    TableScheme studentScheme = getStudentScheme();
+    TableScheme animalsScheme = getAnimalScheme();
+    TableScheme testScheme = getTestScheme();
+
     try {
         Database db;
         db.name = "example";
@@ -62,58 +131,23 @@ int main() {
 
         db.createTable(studentScheme);
         db.createTable(animalsScheme);
-
-        db.saveAllTables();
-
         db.createTable(testScheme);
-        int integer1 = 0xbbbbbbbb;
-        int integer2 = 0xcccccccc;
-        int integer3 = 0xdddddddd;
-        float float1 = 0.14;
-        char* test_varchar_data = string("1234567890").data();  // Get the size of the string without the null terminator
-        void* start_of_string_text = (void *) string("THISISTEXT!!\0").data();
-        vector<string> testColumns = {"id", "1", "2", "3"};
-        vector<Value> testValues;
 
-        int id1 = 111;
-        int id2 = 222;
-        int id3 = 333;
-
-        testValues.emplace_back(FieldTypes::INT, &id1);
-        testValues.emplace_back(FieldTypes::INT, &integer1);
-        testValues.emplace_back(FieldTypes::INT, &integer2);
-        testValues.emplace_back(FieldTypes::INT, &integer3);
-//        testValues.emplace_back(FieldTypes::FLOAT, &float1);
-//        testValues.emplace_back(FieldTypes::VARCHAR, test_varchar_data);
-//        testValues.emplace_back(FieldTypes::TEXT, start_of_string_text);
-
-        db.insert("test", testColumns, testValues);
-//        testValues.begin()->data = reinterpret_cast<void *>(&id2);
-        db.insert("test",  testColumns, testValues);
-//        testValues.begin()->data = reinterpret_cast<void *>(&id3);
-//        db.insert("test",  testValues);
+        fillTestScheme(&db);
 
         cout << "BEFORE:" << endl;
         vector<vector<Value>> values = db.readAllValuesFromTable(*(db.getTableByName("test")));
-        cout << values.size() << " rows!" << endl;
         for(auto &row : values) {
-            for(auto &value: row) {
-                cout << Util::GET_FIELD_TYPE_NAME(value.type) << endl;
-            }
-            cout << endl;
+            cout << Util::convertRowToString(testScheme, row) << endl;
         }
 
         cout << "*erasing id = 111*" << endl;
         db.removeById("test", 111);
 
         cout << "AFTER:" << endl;
-        values = db.readAllValuesFromTable(*(db.getTableByName("test")));
-        cout << values.size() << " rows!" << endl;
+        vector<vector<Value>> values2 = db.readAllValuesFromTable(*(db.getTableByName("test")));
         for(auto &row : values) {
-            for(auto &value: row) {
-                cout << Util::GET_FIELD_TYPE_NAME(value.type) << endl;
-            }
-            cout << endl;
+            cout << Util::convertRowToString(testScheme, row) << endl;
         }
     } catch (std::invalid_argument &e) {
         string message = e.what();
