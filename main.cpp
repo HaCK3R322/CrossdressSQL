@@ -79,9 +79,9 @@ void fillTestScheme(Database* db) {
     vector<Value> testValues2;
     vector<Value> testValues3;
 
-    int id1 = 111;
-    int id2 = 222;
-    int id3 = 333;
+    int id1 = 1;
+    int id2 = 2;
+    int id3 = 3;
 
     testValues.emplace_back(FieldTypes::INT, &id1, sizeof(int));
     testValues.emplace_back(FieldTypes::INT, &integer1, 4);
@@ -110,6 +110,78 @@ void fillTestScheme(Database* db) {
     db->insert("test", testColumns, testValues);
     db->insert("test",  testColumns, testValues2);
     db->insert("test",  testColumns, testValues3);
+}
+
+void insertRowsToTest(Database* db, int numberOfRows) {
+    int integer1 = 123;
+    int integer2 = 1234;
+    int integer3 = 12345;
+    float float1 = 0.14;
+    char* test_varchar_data1 = reinterpret_cast<char*>(malloc(10));
+    for(int i = 0; i < 10; i++) {
+        *(test_varchar_data1 + i) = '0' + i;
+    }
+
+    string start_of_string_text("abc");
+
+    vector<string> testColumns = {"id", "1", "2", "3", "4", "5", "6"};
+
+    int start_id = 1000;
+    for(int i = 0; i < numberOfRows; i++) {
+        start_id += 1;
+
+        vector<Value> testValues;
+        testValues.emplace_back(FieldTypes::INT, &start_id, sizeof(int));
+        testValues.emplace_back(FieldTypes::INT, &integer1, 4);
+        testValues.emplace_back(FieldTypes::INT, &integer2, 4);
+        testValues.emplace_back(FieldTypes::INT, &integer3, 4);
+        testValues.emplace_back(FieldTypes::FLOAT, &float1, 4);
+        testValues.emplace_back(FieldTypes::VARCHAR, test_varchar_data1, 10);
+        testValues.emplace_back(FieldTypes::TEXT, start_of_string_text.data(), 4);
+
+        db->insert("test", testColumns, testValues);
+
+        cout << "\r" << i;
+    }
+
+}
+
+void insertRowsToTestV2(Database* db, int numberOfRows) {
+    int integer1 = 123;
+    int integer2 = 1234;
+    int integer3 = 12345;
+    float float1 = 0.14;
+    char* test_varchar_data1 = reinterpret_cast<char*>(malloc(10));
+    for(int i = 0; i < 10; i++) {
+        *(test_varchar_data1 + i) = '0' + i;
+    }
+
+    string start_of_string_text("abc");
+
+    vector<string> testColumns = {"id", "1", "2", "3", "4", "5", "6"};
+
+    int start_id = 1000;
+    vector<vector<Value>> rows;
+    for(int i = 0; i < numberOfRows; i++) {
+        start_id += 1;
+
+        vector<Value> testValues;
+        testValues.emplace_back(FieldTypes::INT, &start_id, sizeof(int));
+        testValues.emplace_back(FieldTypes::INT, &integer1, 4);
+        testValues.emplace_back(FieldTypes::INT, &integer2, 4);
+        testValues.emplace_back(FieldTypes::INT, &integer3, 4);
+        testValues.emplace_back(FieldTypes::FLOAT, &float1, 4);
+        testValues.emplace_back(FieldTypes::VARCHAR, test_varchar_data1, 10);
+        testValues.emplace_back(FieldTypes::TEXT, start_of_string_text.data(), 4);
+
+        rows.push_back(testValues);
+
+        cout << i << "\n";
+    }
+    cout << "\n";
+
+    db->insert("test", testColumns, rows);
+
 }
 
 void clearData() {
@@ -170,6 +242,33 @@ int main() {
         for(auto &row : rows2) {
             cout << Util::convertRowToString(row) << endl;
         }
+
+        cout << "\n\nIDS:" << endl;
+        vector<Row> allRows = db.selectAll("test");
+        vector<string> columnsToSelect = {"4", "id"};
+        vector<Row> ids = db.selectColumns("test", allRows, columnsToSelect);
+        for(auto &row : ids) {
+            cout << Util::convertRowToString(row) << endl;
+        }
+
+        cout << Util::convertRowsToString(ids);
+        cout << Util::convertRowsToString(allRows);
+
+
+        db.LOG = false;
+        auto start = std::chrono::high_resolution_clock::now();
+        insertRowsToTestV2(&db, 100000);
+        auto stop = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+        cout << "values was inserted. (" << duration.count() << " ms." << ")\n";
+        db.LOG = true;
+
+        start = std::chrono::high_resolution_clock::now();
+        allRows = db.selectAll("test");
+        stop = std::chrono::high_resolution_clock::now();
+        auto duration2 = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+        cout << "values was selected. (" << duration2.count() << " ms." << ")\n";
+        cout << Util::convertRowsToString(allRows);
     } catch (std::invalid_argument &e) {
         string message = e.what();
         cout << "Error: " + message;

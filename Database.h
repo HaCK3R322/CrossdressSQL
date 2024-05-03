@@ -34,13 +34,16 @@ public:
     void dropTable(const string& tableName);
 
     vector<Row> selectAll(const Table& table);
+    vector<Row> selectAll(string tableName);
+    vector<Row> selectColumns(const TableScheme &scheme, const vector<Row> &rows, const vector<string> &columnNames);
+    vector<Row> selectColumns(string tableName, const vector<Row> &rows, const vector<string> &columnNames);
 
-    //TODO: constraints check
     void insert(const string& tableName, const vector<string>& columns, const vector<Value>& values);
     void insert(const string& tableName, const vector<Value>& values);
+    void insert(const string& tableName, const vector<string>& columns, vector<vector<Value>> values);
 
-    //TODO: change to removeByPrimaryKey(const string& tableName, Value keyValue)
-    void removeById(const string& tableName, int id);
+    void deleteRows(Table* table, const vector<Row>& rows);
+
     //private:
     string SCHEMES_FILENAME = "schemes.conf";
     string CONSTRAINS_FILENAME = "constraints.conf";
@@ -48,9 +51,9 @@ public:
     filesystem::path configurationPath;
     filesystem::path schemesPath;
     filesystem::path constraintsPath;
-//    const long long DATA_FILE_SIZE = 1LL * 1024 * 1024 * 1024; // 1gb
+    const long long DATA_FILE_SIZE = 1LL * 1024 * 1024 * 1024; // 1gb
 //    const size_t DATA_FILE_SIZE = 1LL * 1024 * 1024; // 1mb
-    const size_t DATA_FILE_SIZE = 1LL * 256 * 4; // 1kb
+//    const size_t DATA_FILE_SIZE = 1LL * 256 * 4; // 1kb
 
     string name;
     vector<Table> tables;
@@ -70,15 +73,17 @@ public:
     vector<vector<Value>> readAllValuesFromTable(const Table& table);
 
     void validateValueInserting(const Table& table, const string& columnName, const Value& value);
+    void validateValuesInserting(const Table& table, const string& columnName, const vector<Value> &value);
     string getPrimaryKeyName(const Table& table);
     FieldDescription getFieldDescriptionByName(const Table& table, const string& fieldName);
     bool primaryKeyExists(const Table& table, const Value& value);
     int getPrimaryKeyPos(const TableScheme& scheme);
     void validateScheme(const TableScheme& scheme);
 
+    bool LOG = true;
     void log(const string& message);
 
-    void deleteRows(Table* table, const vector<Row>& rows);
+    bool primaryKeysExist(const Table &table, const vector<Value> &values);
 };
 
 

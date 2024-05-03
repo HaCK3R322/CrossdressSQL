@@ -18,7 +18,8 @@ public:
     Header header;
     std::vector<Pointer> pointers;
 
-    Pointer addPointer() {
+    Pointer addPointer(size_t dataSize) {
+        header.dataStartShift += dataSize;
         Pointer pointer(header.dataStartShift, pointers.size());
         pointers.push_back(pointer);
         header.numberOfPointers += 1;

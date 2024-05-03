@@ -12,9 +12,11 @@
 class Row {
 public:
     Pointer pointer;
+    std::vector<std::string> columns;
     std::vector<Value> values;
 
-    Row(const Pointer &pointer, const std::vector<Value> &values) : pointer(pointer), values(values) {}
+    Row(const Pointer &pointer, const std::vector<std::string> &columns, const std::vector<Value> &values) : pointer(
+            pointer), columns(columns), values(values) {}
 };
 
 #endif //CROSSDRESSSQL_ROW_H

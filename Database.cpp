@@ -47,25 +47,27 @@ void Database::init() {
 }
 
 void Database::log(const string& message) {
-    // Get the current time
-    auto t = time(nullptr);
-    auto tm = *localtime(&t);
+    if(LOG) {
+        // Get the current time
+        auto t = time(nullptr);
+        auto tm = *localtime(&t);
 
-    // Stream to hold the time string
-    ostringstream timeStream;
-    timeStream << put_time(&tm, "%Y-%m-%d %H:%M:%S");
+        // Stream to hold the time string
+        ostringstream timeStream;
+        timeStream << put_time(&tm, "%Y-%m-%d %H:%M:%S");
 
-    // Compute the maximum length of the prefix "[<time>][<name>]"
-    ostringstream prefixStream;
-    prefixStream << "[" << timeStream.str() << "][" << name << "] ";
-    string prefix = prefixStream.str();
+        // Compute the maximum length of the prefix "[<time>][<name>]"
+        ostringstream prefixStream;
+        prefixStream << "[" << timeStream.str() << "][" << name << "] ";
+        string prefix = prefixStream.str();
 
-    // Determine the number of spaces to add for alignment
-    const int targetPrefixLength = 40;  // Set a target prefix length for alignment
-    int spaceCount = max(0, targetPrefixLength - static_cast<int>(prefix.length()));
+        // Determine the number of spaces to add for alignment
+        const int targetPrefixLength = 40;  // Set a target prefix length for alignment
+        int spaceCount = max(0, targetPrefixLength - static_cast<int>(prefix.length()));
 
-    // Log the message with alignment by padding spaces if necessary
-    cout << prefix << string(spaceCount, ' ') << message << endl;
+        // Log the message with alignment by padding spaces if necessary
+        cout << prefix << string(spaceCount, ' ') << message << endl;
+    }
 }
 
 /**
@@ -373,7 +375,9 @@ void Database::insert(const string& tableName, const vector<string>& columns, co
 
     // constraints check
     if(columns.size() != values.size()) {
-        throw std::invalid_argument("Cannot insert values into " + table->scheme.name + ": different length between columns and values arrays");
+        throw std::invalid_argument("Cannot insert values into "
+            + table->scheme.name
+            + ": different length between columns and values arrays (" + to_string(columns.size()) + " / " + to_string(values.size()) + ")");
     }
 
 
@@ -390,9 +394,7 @@ void Database::insert(const string& tableName, const vector<string>& columns, co
         memcpy(buffer + shift, values.at(i).data, values.at(i).size);
         shift += values.at(i).size;
     }
-
-    table->header.dataStartShift += valuesDataSize;
-    table->addPointer();
+    table->addPointer(valuesDataSize);
 
     file.seekp(table->header.dataStartShift, ios::end);
     file.write(buffer, valuesDataSize);
@@ -469,7 +471,7 @@ void Database::validateValueInserting(const Table &table, const string& columnNa
             if (Util::equal(row.values.at(columnPos), value))
                 throw invalid_argument("Error inserting value into \""
                                        + fieldDescription.name
-                                       + "\": value not unique");
+                                       + "\": value \"" + Util::convertValueToString(value) + "\" not unique");
         }
     }
 
@@ -525,6 +527,47 @@ bool Database::primaryKeyExists(const Table &table, const Value &value) {
 
                 unique = value1_text != value2_text;
                 break;
+            }
+        }
+    }
+
+    return !unique;
+}
+
+bool Database::primaryKeysExist(const Table &table, const vector<Value> &keys) {
+    auto values = selectAll(table);
+
+    string keyName = getPrimaryKeyName(table);
+    FieldDescription description = getFieldDescriptionByName(table, keyName);
+
+    int valuePos = 0;
+    while (table.scheme.fields.at(valuePos).name != keyName) valuePos += 1;
+
+    bool unique = true;
+    for(auto & row : values) {
+        Value existingValue = row.values.at(valuePos);
+        for(auto const &key : keys) {
+            switch (existingValue.type) {
+                case FieldTypes::INT:
+                case FieldTypes::FLOAT:
+                    if(Util::readInt(existingValue.data) == Util::readInt(key.data)) unique = false;
+                    break;
+
+                case FieldTypes::VARCHAR: {
+                    string str1(Util::readVarchar(existingValue.data), existingValue.size);
+                    string str2(Util::readVarchar(existingValue.data), key.size);
+
+                    unique = str1 != str2;
+                    break;
+                }
+
+                case FieldTypes::TEXT: {
+                    string value1_text = Util::readText(existingValue.data);
+                    string value2_text = Util::readText(key.data);
+
+                    unique = value1_text != value2_text;
+                    break;
+                }
             }
         }
     }
@@ -599,6 +642,10 @@ void Database::validateScheme(const TableScheme &scheme) {
 
 vector<Row> Database::selectAll(const Table &table) {
     vector<Row> rows;
+    vector<string> columnNames;
+    for(const auto & field : table.scheme.fields) {
+        columnNames.push_back(field.name);
+    }
 
     size_t dataSize = table.header.dataStartShift;
     char* buffer = static_cast<char *>(malloc(dataSize));
@@ -623,19 +670,139 @@ vector<Row> Database::selectAll(const Table &table) {
             shift += value_size;
         }
 
-        rows.emplace_back(pointer, values);
+        rows.emplace_back(pointer, columnNames, values);
     }
 
     std::free(buffer);
 
     return rows;
-
 }
 
+vector<Row> Database::selectAll(string tableName) {
+    Table* table = getTableByName(tableName);
+    return selectAll(*table);
+}
+
+vector<Row> Database::selectColumns(const TableScheme& scheme, const vector<Row>& rows, const vector<string>& columnNames) {
+    vector<Row> selected;
+
+    for(const auto& row : rows) {
+        vector<Value> newValues;
+
+        for(const auto & columnName: columnNames) {
+            newValues.push_back(row.values.at(scheme.getFieldIndexByName(columnName)));
+        }
+
+        selected.emplace_back(row.pointer, columnNames, newValues);
+    }
+
+    return selected;
+}
+
+vector<Row> Database::selectColumns(string tableName, const vector<Row> &rows, const vector<string> &columnNames) {
+    Table* table = getTableByName(tableName);
+    return selectColumns(table->scheme, rows, columnNames);
+}
+
+void Database::insert(const string &tableName, const vector<string> &columns, vector<vector<Value>> values) {
+    Table* table = getTableByName(tableName);
+
+    if(values.empty()) return;
+
+    // constraints check
+    if(columns.size() != values[0].size()) {
+        throw std::invalid_argument("Cannot insert values into "
+                                    + table->scheme.name
+                                    + ": different length between columns and values arrays (" + to_string(columns.size()) + " / " + to_string(values.size()) + ")");
+    }
 
 
+    ofstream file(table->path, ios::out | ios::binary | ios::app);
+    if(!file.is_open()) throw std::invalid_argument("Cannot insert values into " + table->scheme.name + ": cannot open file with data");
 
+    size_t valuesDataSize = 0;
+    for(const auto & row : values) {
+        for(const auto & value : row) {
+            valuesDataSize += value.size;
+        }
+    };
 
+    //validation
+    for(int i = 0; i < columns.size(); i++) {
+        vector<Value> column_of_values;
+        for(int j = 0; j < values.size(); j++) {
+            column_of_values.push_back(values[j][i]);
+        }
+        validateValuesInserting(*table, columns.at(i), column_of_values);
+    }
 
+    char* buffer = reinterpret_cast<char *>(malloc(valuesDataSize));
+    size_t shift = 0;
+    for(auto const &row : values) {
+        size_t valueSize = 0;
+        for(int i = 0; i < columns.size(); i++) {
+            memcpy(buffer + shift, row.at(i).data, row.at(i).size);
+            shift += row.at(i).size;
+            valueSize += row.at(i).size;
+        }
 
+        table->addPointer(valueSize);
+    }
 
+    file.seekp(table->header.dataStartShift, ios::end);
+    file.write(buffer, valuesDataSize);
+    file.close();
+
+    log("Inserted into \"" + table->scheme.name + "\" " + to_string(valuesDataSize) + " bytes of data");
+
+    saveTableHeaderAndPointers(*table);
+
+    free(buffer);
+}
+
+void Database::validateValuesInserting(const Table &table, const string &columnName, const vector<Value> &values) {
+    FieldDescription fieldDescription = getFieldDescriptionByName(table, columnName);
+
+    if(values.empty()) throw invalid_argument("Cannot validate empty array of values");
+
+    FieldTypes type = values[0].type;
+    for(const auto& value : values) {
+        if(type != value.type) throw invalid_argument("Values array differs in types");
+    }
+
+    if (fieldDescription.type != type)
+        throw invalid_argument("Error inserting value into \""
+                               + fieldDescription.name
+                               + "\": type "
+                               + Util::GET_FIELD_TYPE_NAME(type)
+                               + " cannot be casted to type "
+                               + Util::GET_FIELD_TYPE_NAME(fieldDescription.type));
+
+    if (fieldDescription.IS_UNIQUE || fieldDescription.IS_PRIMARY_KEY) {
+        vector<Row> rows = selectAll(table);
+        int columnPos = table.scheme.getFieldIndexByName(fieldDescription.name);
+
+        for (auto const &row: rows) {
+            for(const auto & value : values) {
+                if (Util::equal(row.values.at(columnPos), value))
+                    throw invalid_argument("Error inserting value into \""
+                                           + fieldDescription.name
+                                           + "\": value \"" + Util::convertValueToString(value) + "\" not unique");
+            }
+        }
+    }
+
+    if (fieldDescription.IS_FOREIGN_KEY) {
+        string referenceTableName = fieldDescription.REFERENCE;
+
+        if (!tableExists(referenceTableName))
+            throw invalid_argument("Error inserting value into \""
+                                   + fieldDescription.name
+                                   + "\": reference for foreign key not found");
+
+        if (!primaryKeysExist(*(getTableByName(referenceTableName)), values))
+            throw invalid_argument("Error inserting value into \""
+                                   + fieldDescription.name
+                                   + "\": reference for foreign key not found");
+    }
+}
