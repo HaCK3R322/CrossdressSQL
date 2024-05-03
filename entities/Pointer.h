@@ -8,9 +8,10 @@
 class Pointer {
 public:
     int shift;
+    int index;
 
     Pointer() = default;
-    explicit Pointer(int shift) : shift(shift) {}
+    explicit Pointer(int shift, int index) : shift(shift), index(index) {}
 };
 
 

@@ -65,9 +65,11 @@ void fillTestScheme(Database* db) {
     float float1 = 0.14;
     char* test_varchar_data1 = reinterpret_cast<char*>(malloc(10));
     char* test_varchar_data2 = reinterpret_cast<char*>(malloc(10));
+    char* test_varchar_data3 = reinterpret_cast<char*>(malloc(10));
     for(int i = 0; i < 10; i++) {
         *(test_varchar_data1 + i) = '0' + i;
         *(test_varchar_data2 + i) = 'a' + i;
+        *(test_varchar_data3 + i) = 'A' + i;
     }
 
     string start_of_string_text("abc");
@@ -75,6 +77,7 @@ void fillTestScheme(Database* db) {
     vector<string> testColumns = {"id", "1", "2", "3", "4", "5", "6"};
     vector<Value> testValues;
     vector<Value> testValues2;
+    vector<Value> testValues3;
 
     int id1 = 111;
     int id2 = 222;
@@ -88,17 +91,6 @@ void fillTestScheme(Database* db) {
     testValues.emplace_back(FieldTypes::VARCHAR, test_varchar_data1, 10);
     testValues.emplace_back(FieldTypes::TEXT, start_of_string_text.data(), 4);
 
-    void* lol = start_of_string_text.data();
-    void* kek = malloc(start_of_string_text.size() + 1 + 4);
-    for(int i = 0; i < start_of_string_text.size() + 1 + 4; i++) {
-        *(reinterpret_cast<char*>(kek) + i) = 0xAA;
-    }
-    for(int i = 0; i < start_of_string_text.size() + 1; i++) {
-        memcpy((reinterpret_cast<char*>(kek)) + i, (reinterpret_cast<char*>(lol)) + i, 1);
-    }
-    int xd = 10;
-    free(kek);
-
     testValues2.emplace_back(FieldTypes::INT, &id2, sizeof(int));
     testValues2.emplace_back(FieldTypes::INT, &integer1, 4);
     testValues2.emplace_back(FieldTypes::INT, &integer2, 4);
@@ -107,17 +99,36 @@ void fillTestScheme(Database* db) {
     testValues2.emplace_back(FieldTypes::VARCHAR, test_varchar_data2, 10);
     testValues2.emplace_back(FieldTypes::TEXT, start_of_string_text.data(), 4);
 
-    db->insert("test",  testColumns, testValues2);
+    testValues3.emplace_back(FieldTypes::INT, &id3, sizeof(int));
+    testValues3.emplace_back(FieldTypes::INT, &integer1, 4);
+    testValues3.emplace_back(FieldTypes::INT, &integer2, 4);
+    testValues3.emplace_back(FieldTypes::INT, &integer3, 4);
+    testValues3.emplace_back(FieldTypes::FLOAT, &float1, 4);
+    testValues3.emplace_back(FieldTypes::VARCHAR, test_varchar_data3, 10);
+    testValues3.emplace_back(FieldTypes::TEXT, start_of_string_text.data(), 4);
+
     db->insert("test", testColumns, testValues);
+    db->insert("test",  testColumns, testValues2);
+    db->insert("test",  testColumns, testValues3);
 }
 
-int main() {
-
+void clearData() {
     try {
         std::filesystem::remove_all("example");
     } catch (const std::filesystem::filesystem_error& e) {
         std::cerr << "Error deleting directory: " << e.what() << std::endl;
     }
+}
+
+int main() {
+//    clearData();
+//    Database db;
+//    db.name = "example";
+//    db.init();
+//    TableScheme testScheme = getTestScheme();
+//    db.createTable(testScheme);
+
+    clearData();
 
     TableScheme studentScheme = getStudentScheme();
     TableScheme animalsScheme = getAnimalScheme();
@@ -129,25 +140,35 @@ int main() {
         db.init();
         db.readAllTables();
 
-        db.createTable(studentScheme);
-        db.createTable(animalsScheme);
+//        db.createTable(studentScheme);
+//        db.createTable(animalsScheme);
         db.createTable(testScheme);
 
         fillTestScheme(&db);
 
+        Table* testTable = db.getTableByName("test");
+
         cout << "BEFORE:" << endl;
-        vector<vector<Value>> values = db.readAllValuesFromTable(*(db.getTableByName("test")));
-        for(auto &row : values) {
-            cout << Util::convertRowToString(testScheme, row) << endl;
+        vector<Row> rows = db.selectAll(*testTable);
+        for(auto &row : rows) {
+            cout << Util::convertRowToString(row) << endl;
         }
 
-        cout << "*erasing id = 111*" << endl;
-        db.removeById("test", 111);
+        cout << "*erasing id = 222*" << endl;
+        vector<Row> rowsToDelete;
+        for(auto const& row : rows) {
+            int valuePos = (*testTable).scheme.getFieldIndexByName("id");
+            if(Util::readInt(row.values.at(valuePos).data) == 222) {
+                rowsToDelete.push_back(row);
+                break;
+            }
+        }
+        db.deleteRows(testTable, rowsToDelete);
 
         cout << "AFTER:" << endl;
-        vector<vector<Value>> values2 = db.readAllValuesFromTable(*(db.getTableByName("test")));
-        for(auto &row : values) {
-            cout << Util::convertRowToString(testScheme, row) << endl;
+        vector<Row> rows2 = db.selectAll(*db.getTableByName("test"));
+        for(auto &row : rows2) {
+            cout << Util::convertRowToString(row) << endl;
         }
     } catch (std::invalid_argument &e) {
         string message = e.what();

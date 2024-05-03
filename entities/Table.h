@@ -17,6 +17,18 @@ public:
     TableScheme scheme;
     Header header;
     std::vector<Pointer> pointers;
+
+    Pointer addPointer() {
+        Pointer pointer(header.dataStartShift, pointers.size());
+        pointers.push_back(pointer);
+        header.numberOfPointers += 1;
+        return pointer;
+    }
+
+    void erasePointer(Pointer pointer) {
+        pointers.erase(pointers.begin() + pointer.index);
+        header.numberOfPointers -= 1;
+    }
 };
 
 #endif //CROSSDRESSSQL_TABLE_H

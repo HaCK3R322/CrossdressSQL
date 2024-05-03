@@ -16,6 +16,12 @@ public:
     size_t size;
 
 
+    /**
+     * Creates new Value
+     * @param fieldType
+     * @param dataSrc src to copy data from
+     * @param valueSize bytes
+     */
     Value(FieldTypes fieldType, void *dataSrc, size_t valueSize) {
         type = fieldType;
         size = valueSize;

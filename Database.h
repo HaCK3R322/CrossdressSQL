@@ -22,6 +22,7 @@
 #include "entities/Table.h"
 #include "Util.h"
 #include "entities/Value.h"
+#include "entities/Row.h"
 
 using namespace std;
 
@@ -32,13 +33,15 @@ public:
     void createTable(const TableScheme& scheme);
     void dropTable(const string& tableName);
 
+    vector<Row> selectAll(const Table& table);
+
     //TODO: constraints check
     void insert(const string& tableName, const vector<string>& columns, const vector<Value>& values);
-    void insert(const string& tableName, vector<Value> values);
+    void insert(const string& tableName, const vector<Value>& values);
 
     //TODO: change to removeByPrimaryKey(const string& tableName, Value keyValue)
     void removeById(const string& tableName, int id);
-//private:
+    //private:
     string SCHEMES_FILENAME = "schemes.conf";
     string CONSTRAINS_FILENAME = "constraints.conf";
     filesystem::path dirPath;
@@ -46,7 +49,8 @@ public:
     filesystem::path schemesPath;
     filesystem::path constraintsPath;
 //    const long long DATA_FILE_SIZE = 1LL * 1024 * 1024 * 1024; // 1gb
-    const long long DATA_FILE_SIZE = 1LL * 1024 * 1024; // 1mb
+//    const size_t DATA_FILE_SIZE = 1LL * 1024 * 1024; // 1mb
+    const size_t DATA_FILE_SIZE = 1LL * 256 * 4; // 1kb
 
     string name;
     vector<Table> tables;
@@ -57,8 +61,7 @@ public:
     Table* getTableByName(const string& tableName);
     void saveAllTablesSchemes();
     void saveAllTablesConstraints();
-    void saveTableHeader(const Table& table);
-    void saveTablePointers(const Table& table);
+    void saveTableHeaderAndPointers(const Table& table);
     void saveAllTables();
 
     void readTable(const string& tableName);
@@ -66,12 +69,16 @@ public:
 
     vector<vector<Value>> readAllValuesFromTable(const Table& table);
 
-    void validateValueInserting(const Table& table, const FieldDescription& fieldDescription, const Value& value);
+    void validateValueInserting(const Table& table, const string& columnName, const Value& value);
     string getPrimaryKeyName(const Table& table);
-    FieldDescription getDescriptionByName(const Table& table, const string& fieldName);
+    FieldDescription getFieldDescriptionByName(const Table& table, const string& fieldName);
     bool primaryKeyExists(const Table& table, const Value& value);
+    int getPrimaryKeyPos(const TableScheme& scheme);
+    void validateScheme(const TableScheme& scheme);
 
     void log(const string& message);
+
+    void deleteRows(Table* table, const vector<Row>& rows);
 };
 
 

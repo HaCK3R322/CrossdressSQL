@@ -21,6 +21,14 @@ public:
         }
         throw std::invalid_argument("Cannot get field description for field \"" + fieldName + "\" of scheme \"" + name + "\"");
     }
+
+    int getFieldIndexByName(const std::string& fieldName) const {
+        for(int i = 0; i < fields.size(); i++) {
+            if(fields.at(i).name == fieldName) return i;
+        }
+
+        return -1;
+    }
 };
 
 #endif //CROSSDRESSSQL_TABLESCHEME_H

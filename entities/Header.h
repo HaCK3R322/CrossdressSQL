@@ -8,10 +8,9 @@
 
 class Header {
 public:
-    int numberOfPointers;
-    int pointersStartShift;
-    int pointersEndShift;
-    int dataStartShift;
+    size_t numberOfPointers;
+    size_t pointersStartShift;
+    size_t dataStartShift;
 };
 
 

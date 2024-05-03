@@ -9,6 +9,7 @@
 #include "entities/FieldTypes.h"
 #include "entities/FieldConstraints.h"
 #include "entities/Value.h"
+#include "entities/Row.h"
 
 class Util {
 public:
@@ -142,38 +143,53 @@ public:
         throw std::invalid_argument("Cannot calculate size of data.");
     }
 
-    static std::string convertValueToString(const FieldDescription& correspondingField, const Value& value) {
-        if(value.type == FieldTypes::INT) return std::to_string(readInt(value.data));
-        if(value.type == FieldTypes::FLOAT) return std::to_string(readFloat(value.data));
-        if(value.type == FieldTypes::VARCHAR) {
-            char* str = reinterpret_cast<char*>(std::malloc(correspondingField.varcharSize + 1));
-            for(int i = 0; i < correspondingField.varcharSize; i++) {
-                *(str + i) = *(Util::readVarchar(value.data) + i);
-            }
-            *(str + correspondingField.varcharSize) = '\0';
-            free(str);
-
-            return str;
-        }
-        if(value.type == FieldTypes::TEXT) {
-            std::string str(reinterpret_cast<char*>(value.data));
-            return str;
-        };
+    static std::string convertValueToString(const Value& value) {
+        if (value.type == FieldTypes::INT) return std::to_string(readInt(value.data));
+        if (value.type == FieldTypes::FLOAT) return std::to_string(readFloat(value.data));
+        if (value.type == FieldTypes::VARCHAR) return std::string{reinterpret_cast<const char*>(value.data), value.size};
+        if (value.type == FieldTypes::TEXT) return std::string{reinterpret_cast<char *>(value.data)};;
 
         throw std::invalid_argument("Cannot convert value to string.");
     }
 
-    static std::string convertRowToString(const TableScheme& tableScheme, const std::vector<Value>& values) {
+    static std::string convertRowToString(const Row& row) {
         std::string str = "(";
 
-        for(int i = 0; i < tableScheme.fields.size(); i++) {
-            str += convertValueToString(tableScheme.fields.at(i), values.at(i));
+        for(int i = 0; i < row.values.size(); i++) {
+            str += convertValueToString(row.values.at(i));
 
-            if(i != tableScheme.fields.size() - 1) str += ",";
+            if(i != row.values.size() - 1) str += ",";
         }
         str += ")";
 
         return str;
+    }
+
+    static bool equal(const std::vector<Value>& row1, const std::vector<Value>& row2) {
+        if(row1.size() != row2.size()) return false;
+
+        for(int i = 0; i < row1.size(); i++) {
+            Value value1 = row1.at(i);
+            Value value2 = row2.at(i);
+
+            if(value1.type == value2.type) {
+                if(convertValueToString(value1) != convertValueToString(value2)) return false;
+            } else {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    static bool equal(const Value& value1, const Value& value2) {
+        if(value1.type == value2.type) {
+            if(convertValueToString(value1) != convertValueToString(value2)) return false;
+        } else {
+            return false;
+        }
+
+        return true;
     }
 };
 

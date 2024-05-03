@@ -74,10 +74,11 @@ void Database::log(const string& message) {
  * @param description
  */
 void Database::createTable(const TableScheme& scheme) {
-    bool lol = tableExists(scheme.name);
     if(tableExists(scheme.name)) {
         throw invalid_argument("Table with name \"" + scheme.name + "\" already exists!");
     }
+
+    validateScheme(scheme);
 
     ofstream file(configurationPath, ios::app);
     if (!file.is_open()) {
@@ -99,15 +100,17 @@ void Database::createTable(const TableScheme& scheme) {
     table.pointers = pointers;
     table.path = dirPath / (table.scheme.name + ".data");
 
-    ofstream outfile(table.path, ios::binary | ios::trunc);
-    outfile.seekp(DATA_FILE_SIZE - 1);
-    outfile.put(0);
-    outfile.close();
-
-    saveTableHeader(table);
-
     tables.push_back(table);
 
+    ofstream outfile(table.path, ios::binary | ios::trunc);
+    char* buffer = reinterpret_cast<char*>(malloc(DATA_FILE_SIZE));
+    for(size_t i = 0; i < DATA_FILE_SIZE; i++) {
+        *(buffer + i) = 0xAA;
+    }
+    outfile.write(buffer, DATA_FILE_SIZE);
+    outfile.close();
+
+    saveTableHeaderAndPointers(table);
     saveAllTablesSchemes();
     saveAllTablesConstraints();
 
@@ -120,40 +123,6 @@ bool Database::tableExists(const string& tableName) {
     }
 
     return false;
-}
-
-void Database::saveTableHeader(const Table& table) {
-    Header header = table.header;
-
-    fstream file(table.path, ios::binary | ios::in | ios::out);
-    if (!file.is_open()) {
-        log("Error saving header of table " + table.scheme.name + ": can not open file " + table.path.string());
-        return;
-    }
-
-    file.seekp(0);
-    file.write(reinterpret_cast<const char*>(&header.numberOfPointers), sizeof(header.numberOfPointers));
-    file.write(reinterpret_cast<const char*>(&header.pointersStartShift), sizeof(header.pointersStartShift));
-    file.write(reinterpret_cast<const char*>(&header.dataStartShift), sizeof(header.dataStartShift));
-
-    file.close();
-    log("Header of table " + table.scheme.name + " was serialized to file " + table.path.string());
-}
-
-void Database::saveTablePointers(const Table &table) {
-    fstream file(table.path, ios::binary | ios::in);
-    if (!file.is_open()) {
-        log("Error saving pointers of table " + table.scheme.name + ": can not open file " + table.path.string());
-        return;
-    }
-
-    file.seekp(table.header.pointersStartShift);
-    for(int i = 0; i < table.header.numberOfPointers; i++) {
-        file.write(reinterpret_cast<const char*>(&(table.pointers.at(i).shift)), sizeof(table.pointers.at(i).shift));
-    }
-    file.close();
-
-    log("Pointers (" + to_string(table.pointers.size()) + ") of table " + table.scheme.name + " was serialized to file " + table.path.string());
 }
 
 /**
@@ -315,7 +284,7 @@ void Database::readTable(const string& tableName) {
     for(int i = 0; i < header.numberOfPointers; i++) {
         Pointer pointer;
         //TODO: instead of "5" there must be sizeof(Pointer), but it gives 8. Why? Idk...
-        dataFile.read(reinterpret_cast<char*>(&pointer), 4);
+        dataFile.read(reinterpret_cast<char*>(&pointer), sizeof(Pointer));
         pointers.push_back(pointer);
 
     }
@@ -355,8 +324,7 @@ void Database::saveAllTables() {
     saveAllTablesConstraints();
 
     for(auto &table: tables) {
-        saveTableHeader(table);
-        saveTablePointers(table);
+        saveTableHeaderAndPointers(table);
     }
 
     log("All tables was saved");
@@ -412,59 +380,54 @@ void Database::insert(const string& tableName, const vector<string>& columns, co
     ofstream file(table->path, ios::out | ios::binary | ios::app);
     if(!file.is_open()) throw std::invalid_argument("Cannot insert values into " + table->scheme.name + ": cannot open file with data");
 
-    vector<size_t> valuesSizes;
-    int valuesDataSize = 0;
-    for(int i = 0; i < columns.size(); i++) {
-        FieldDescription fieldDescription = table->scheme.getFieldDescriptionByName(columns.at(i));
-
-        validateValueInserting(*table, fieldDescription, values.at(i));
-
-        size_t value_size = Util::getSizeOfValue(fieldDescription, values.at(i));
-
-        valuesSizes.push_back(value_size);
-        valuesDataSize += Util::getSizeOfValue(fieldDescription, values.at(i));
-    }
+    size_t valuesDataSize = 0;
+    for(const auto & value : values) valuesDataSize += value.size;
 
     char* buffer = reinterpret_cast<char *>(malloc(valuesDataSize));
     size_t shift = 0;
-    for(int i = 0; i < values.size(); i++) {
-        memcpy(buffer + shift, values.at(i).data, valuesSizes.at(i));
-
-        shift += valuesSizes.at(i);
+    for(int i = 0; i < columns.size(); i++) {
+        validateValueInserting(*table, columns.at(i), values.at(i));
+        memcpy(buffer + shift, values.at(i).data, values.at(i).size);
+        shift += values.at(i).size;
     }
 
-    // TODO: think about safety
     table->header.dataStartShift += valuesDataSize;
-    table->header.numberOfPointers += 1;
-    table->header.pointersEndShift += sizeof(Pointer);
-    table->pointers.emplace_back(table->header.dataStartShift);
+    table->addPointer();
 
-    file.seekp(DATA_FILE_SIZE - table->header.dataStartShift);
+    file.seekp(table->header.dataStartShift, ios::end);
     file.write(buffer, valuesDataSize);
     file.close();
 
     log("Inserted into \"" + table->scheme.name + "\" " + to_string(valuesDataSize) + " bytes of data");
 
-    saveTableHeader(*table);
-    saveTablePointers(*table);
+    saveTableHeaderAndPointers(*table);
 
     free(buffer);
 }
 
+void Database::insert(const std::string& tableName, const vector<Value>& values) {
+    Table* table = getTableByName(tableName);
+
+    vector<string> columns;
+    columns.reserve(table->scheme.fields.size());
+    for(auto & fieldDescription : table->scheme.fields) {
+        columns.push_back(fieldDescription.name);
+    }
+
+    insert(tableName, columns, values);
+}
+
 vector<vector<Value>> Database::readAllValuesFromTable(const Table &table) {
-    int dataSize = table.header.dataStartShift;
+    size_t dataSize = table.header.dataStartShift;
     char* buffer = static_cast<char *>(malloc(dataSize));
 
-    ifstream file(table.path, ios::binary);
-    if(!file.is_open()) throw invalid_argument("Cannot read data from " + table.path.string());
-
-    file.clear();
-    file.seekg(-dataSize, ios::end);
-    file.read(buffer, dataSize);
-
-    file.close();
+    FILE * in_file = fopen(table.path.string().c_str(), "rb");
+    fseek(in_file, -dataSize, SEEK_END);
+    fread(buffer, sizeof(char), dataSize, in_file);
+    fclose(in_file);
 
     vector<vector<Value>> rows;
+    rows.reserve(table.pointers.size());
 
     for(auto &pointer: table.pointers) {
         vector<Value> values;
@@ -487,124 +450,48 @@ vector<vector<Value>> Database::readAllValuesFromTable(const Table &table) {
     return rows;
 }
 
-void Database::insert(const std::string& tableName, vector<Value> values) {
-    Table* table = getTableByName(tableName);
+void Database::validateValueInserting(const Table &table, const string& columnName, const Value &value) {
+    FieldDescription fieldDescription = getFieldDescriptionByName(table, columnName);
 
-    vector<string> columns;
-    for(auto & fieldDescription : table->scheme.fields) {
-        columns.push_back(fieldDescription.name);
-    }
+    if (fieldDescription.type != value.type)
+        throw invalid_argument("Error inserting value into \""
+                               + fieldDescription.name
+                               + "\": type "
+                               + Util::GET_FIELD_TYPE_NAME(value.type)
+                               + " cannot be casted to type "
+                               + Util::GET_FIELD_TYPE_NAME(fieldDescription.type));
 
-    insert(tableName, columns, values);
-}
+    if (fieldDescription.IS_UNIQUE || fieldDescription.IS_PRIMARY_KEY) {
+        vector<Row> rows = selectAll(table);
+        int columnPos = table.scheme.getFieldIndexByName(fieldDescription.name);
 
-
-void Database::removeById(const string &tableName, int id) {
-    Table* table = getTableByName(tableName);
-
-    int primaryKeyPos = 0;
-    for(int i = 0; i < table->scheme.fields.size(); i++) {
-        if(table->scheme.fields.at(i).IS_PRIMARY_KEY) {
-            primaryKeyPos = i;
-        }
-    }
-
-    vector<vector<Value>> values = readAllValuesFromTable(*table);
-
-    for(int i = 0; i < values.size(); i++) {
-        int value_id = Util::readInt(values.at(i).at(primaryKeyPos).data);
-        if(value_id == id) {
-            table->pointers.erase(table->pointers.begin() + i);
-            table->header.numberOfPointers -= 1;
-
-            saveTableHeader(*table);
-            saveTablePointers(*table);
-            break;
-        }
-    }
-}
-
-
-void Database::validateValueInserting(const Table &table, const FieldDescription &fieldDescription, const Value &value) {
-    for(int i = 0; i < table.scheme.fields.size(); i++) {
-        FieldDescription description = table.scheme.fields.at(i);
-
-        if(description.name == fieldDescription.name) {
-            if (fieldDescription.type != value.type)
+        for (auto const &row: rows) {
+            if (Util::equal(row.values.at(columnPos), value))
                 throw invalid_argument("Error inserting value into \""
-                                       + description.name
-                                       + "\": type "
-                                       + Util::GET_FIELD_TYPE_NAME(value.type)
-                                       + " cannot be casted to type "
-                                       + Util::GET_FIELD_TYPE_NAME(description.type));
-
-            if (description.IS_UNIQUE || description.IS_PRIMARY_KEY) {
-                auto values = readAllValuesFromTable(table);
-
-                int valuePos = 0;
-                while (table.scheme.fields.at(valuePos).name != description.name) valuePos += 1;
-
-                bool unique = true;
-                for(auto & row : values) {
-                    Value existingValue = row.at(valuePos);
-                    switch (existingValue.type) {
-                        case FieldTypes::INT:
-                        case FieldTypes::FLOAT:
-                            if(Util::readInt(existingValue.data) == Util::readInt(value.data)) unique = false;
-                            break;
-
-                        case FieldTypes::VARCHAR: {
-                            char* existingVarchar = Util::readVarchar(existingValue.data);
-                            char* newVarchar = Util::readVarchar(value.data);
-                            bool varcharsEqual = true;
-                            for(int j = 0; j < description.varcharSize; j++) {
-                                if(*(existingVarchar + j) != *(newVarchar + j)) {
-                                    varcharsEqual = false;
-                                    break;
-                                }
-                            }
-                            unique = !varcharsEqual;
-                            break;
-                        }
-
-                        case FieldTypes::TEXT: {
-                            string value1_text = Util::readText(existingValue.data);
-                            string value2_text = Util::readText(value.data);
-
-                            unique = value1_text != value2_text;
-                            break;
-                        }
-                    }
-                }
-
-                if(!unique) throw invalid_argument("Error inserting value into \""
-                                                   + description.name
-                                                   + "\": value not unique");
-            }
-
-            if(description.IS_FOREIGN_KEY) {
-                string referenceTableName = fieldDescription.REFERENCE;
-
-                if(!tableExists(referenceTableName)) throw invalid_argument("Error inserting value into \""
-                                                                                + description.name
-                                                                                + "\": reference for foreign key not found");
-                if(!primaryKeyExists(*(getTableByName(referenceTableName)), value)) throw invalid_argument("Error inserting value into \""
-                                                                                                           + description.name
-                                                                                                           + "\": reference for foreign key not found");
-            }
-
-            return;
+                                       + fieldDescription.name
+                                       + "\": value not unique");
         }
     }
 
-    throw invalid_argument("No field named \"" + fieldDescription.name + "\" in scheme \"" + table.scheme.name + "\"");
+    if (fieldDescription.IS_FOREIGN_KEY) {
+        string referenceTableName = fieldDescription.REFERENCE;
+
+        if (!tableExists(referenceTableName))
+            throw invalid_argument("Error inserting value into \""
+                                   + fieldDescription.name
+                                   + "\": reference for foreign key not found");
+        if (!primaryKeyExists(*(getTableByName(referenceTableName)), value))
+            throw invalid_argument("Error inserting value into \""
+                                   + fieldDescription.name
+                                   + "\": reference for foreign key not found");
+    }
 }
 
 bool Database::primaryKeyExists(const Table &table, const Value &value) {
     auto values = readAllValuesFromTable(table);
 
     string keyName = getPrimaryKeyName(table);
-    FieldDescription description = getDescriptionByName(table, keyName);
+    FieldDescription description = getFieldDescriptionByName(table, keyName);
 
     int valuePos = 0;
     while (table.scheme.fields.at(valuePos).name != keyName) valuePos += 1;
@@ -651,11 +538,100 @@ string Database::getPrimaryKeyName(const Table &table) {
     }
 }
 
-FieldDescription Database::getDescriptionByName(const Table &table, const string& fieldName) {
+FieldDescription Database::getFieldDescriptionByName(const Table &table, const string& fieldName) {
     for (auto & field : table.scheme.fields) {
         if(field.name == fieldName) return field;
     }
 }
+
+/**
+ * file rewrite!
+ * @param table
+ */
+void Database::saveTableHeaderAndPointers(const Table &table) {
+    Header header = table.header;
+    vector<Pointer> pointers = table.pointers;
+
+    FILE * outFile = fopen(table.path.string().c_str(), "rb+");
+    if(!outFile) {
+        throw invalid_argument("Cant open file!");
+    }
+    fwrite(reinterpret_cast<const char*>(&header), sizeof(Header), 1, outFile);
+    fseek(outFile, header.pointersStartShift, SEEK_SET);
+    for(const auto & pointer : pointers) {
+        fwrite(reinterpret_cast<const char*>(&pointer), sizeof(Pointer), 1, outFile);
+    }
+    fclose(outFile);
+
+    log("Table " + table.scheme.name + " header and pointers were serialized to file " + table.path.string());
+}
+
+/**
+ * Deletes rows from table. Works on primary keys comparator.
+ * @param tableName table
+ * @param rows rows
+ */
+void Database::deleteRows(Table* table, const vector<Row>& rowsToDelete) {
+    for(auto & row : rowsToDelete) {
+        table->erasePointer(row.pointer);
+    }
+
+    saveTableHeaderAndPointers(*table);
+}
+
+int Database::getPrimaryKeyPos(const TableScheme& scheme) {
+    for(int i = 0; i < scheme.fields.size(); i++) {
+        if(scheme.fields.at(i).IS_PRIMARY_KEY) return i;
+    }
+
+    throw invalid_argument("Table \"" + scheme.name + "\" doesn't have primary key!");
+}
+
+void Database::validateScheme(const TableScheme &scheme) {
+    bool hasPrimaryKey = false;
+    for(const auto & field: scheme.fields) {
+        if(field.IS_PRIMARY_KEY) {
+            if(hasPrimaryKey) throw invalid_argument("Invalid scheme \"" + scheme.name + "\": multiple primary keys");
+            hasPrimaryKey = true;
+        }
+    }
+}
+
+vector<Row> Database::selectAll(const Table &table) {
+    vector<Row> rows;
+
+    size_t dataSize = table.header.dataStartShift;
+    char* buffer = static_cast<char *>(malloc(dataSize));
+
+    FILE * in_file = fopen(table.path.string().c_str(), "rb");
+    fseek(in_file, -dataSize, SEEK_END);
+    fread(buffer, sizeof(char), dataSize, in_file);
+    fclose(in_file);
+
+    rows.reserve(table.pointers.size());
+
+    for(auto &pointer: table.pointers) {
+        vector<Value> values;
+
+        size_t shift = dataSize - pointer.shift;
+
+        for(const auto & field : table.scheme.fields) {
+            void* data = static_cast<char *>(buffer) + shift;
+            size_t value_size = Util::calcSizeOfValueData(field, data);
+            Value value(field.type, data, value_size);
+            values.push_back(value);
+            shift += value_size;
+        }
+
+        rows.emplace_back(pointer, values);
+    }
+
+    std::free(buffer);
+
+    return rows;
+
+}
+
 
 
 
