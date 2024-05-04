@@ -15,6 +15,12 @@ public:
     void* data;
     size_t size;
 
+    Value() {
+        data = malloc(4);
+        type = FieldTypes::INT;
+        size = 4;
+    }
+
 
     /**
      * Creates new Value

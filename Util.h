@@ -10,6 +10,8 @@
 #include "entities/FieldConstraints.h"
 #include "entities/Value.h"
 #include "entities/Row.h"
+#include "entities/KeyWords.h"
+#include <stdexcept>
 
 using namespace std;
 
@@ -47,6 +49,46 @@ public:
             case FieldConstraints::NULLABLE:
                 return "NULLABLE";
         }
+    }
+
+    static string GET_KEY_WORD_NAME(KeyWords word) {
+        switch (word) {
+            case KeyWords::SELECT:
+                return "SELECT";
+            case KeyWords::DELETE:
+                return "DELETE";
+            case KeyWords::INSERT:
+                return "INSERT";
+            case KeyWords::WHERE:
+                return "WHERE";
+            case KeyWords::COUNT:
+                return "COUNT";
+            case KeyWords::VALUES:
+                return "VALUES";
+            case KeyWords::ORDER:
+                return "ORDER";
+            case KeyWords::LIMIT:
+                return "LIMIT";
+            case KeyWords::BY:
+                return "BY";
+            case KeyWords::IN:
+                return "IN";
+        }
+    }
+
+    static KeyWords PARSE_KEY_WORD(const string& word) {
+        if(word == "SELECT") return KeyWords::SELECT;
+        if(word == "DELETE") return KeyWords::DELETE;
+        if(word == "INSERT") return KeyWords::INSERT;
+        if(word == "WHERE") return KeyWords::WHERE;
+        if(word == "COUNT") return KeyWords::COUNT;
+        if(word == "VALUES") return KeyWords::VALUES;
+        if(word == "ORDER") return KeyWords::ORDER;
+        if(word == "IN") return KeyWords::IN;
+        if(word == "LIMIT") return KeyWords::LIMIT;
+        if(word == "BY") return KeyWords::BY;
+
+        throw invalid_argument("Cannot parse keyword \"" + word + "\"");
     }
 
     static FieldConstraints PARSE_FIELD_CONSTRAINT(string constraint) {
@@ -242,6 +284,51 @@ public:
         }
 
         return true;
+    }
+
+    static bool canCompareTypes(FieldTypes a, FieldTypes b) {
+        if(a == FieldTypes::INT || a == FieldTypes::FLOAT) {
+            return b == FieldTypes::INT || b == FieldTypes::FLOAT;
+        } else {
+            return b == FieldTypes::TEXT || b == FieldTypes::VARCHAR;
+        }
+    }
+
+    static int compare(const Value& a, const Value& b) {
+        if(!canCompareTypes(a.type, b.type)) throw invalid_argument("Cannot compare different types");
+
+        if(a.type == FieldTypes::INT) {
+            int a_value = readInt(a.data);
+
+            if(b.type == FieldTypes::INT) {
+                int b_value = readInt(b.data);
+
+                if(a_value == b_value) return 0;
+                if(a_value > b_value) return 1;
+                if(a_value < b_value) return -1;
+            }
+
+            if(b.type == FieldTypes::FLOAT) {
+                float b_value = readFloat(b.data);
+
+                if((float)a_value > b_value) return 1;
+                if((float)a_value < b_value) return -1;
+                return 0;
+            }
+
+            throw invalid_argument("Comparator doesn't know about type of second value");
+        }
+
+        if(a.type == FieldTypes::TEXT || a.type == FieldTypes::VARCHAR) {
+            string a_str = convertValueToString(a);
+            string b_str = convertValueToString(b);
+
+            if(a_str >  b_str) return 1;
+            if(a_str <  b_str) return -1;
+            return 0;
+        }
+
+        throw invalid_argument("Comparator doesn't know about type of first value");
     }
 };
 

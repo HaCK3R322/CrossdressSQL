@@ -29,6 +29,7 @@ using namespace std;
 class Database {
 public:
     void init();
+    void drop();
 
     void createTable(const TableScheme& scheme);
     void dropTable(const string& tableName);
@@ -43,16 +44,18 @@ public:
     void insert(const string& tableName, const vector<string>& columns, vector<vector<Value>> values);
 
     void deleteRows(Table* table, const vector<Row>& rows);
+    void deleteRows(const string& tableName, const vector<Row>& rows);
 
-    //private:
+    void vacuum(Table *table);
+
     string SCHEMES_FILENAME = "schemes.conf";
     string CONSTRAINS_FILENAME = "constraints.conf";
     filesystem::path dirPath;
     filesystem::path configurationPath;
     filesystem::path schemesPath;
     filesystem::path constraintsPath;
-    const long long DATA_FILE_SIZE = 1LL * 1024 * 1024 * 1024; // 1gb
-//    const size_t DATA_FILE_SIZE = 1LL * 1024 * 1024; // 1mb
+//    const long long DATA_FILE_SIZE = 1LL * 1024 * 1024 * 1024; // 1gb
+    const size_t DATA_FILE_SIZE = 1LL * 1024 * 1024; // 1mb
 //    const size_t DATA_FILE_SIZE = 1LL * 256 * 4; // 1kb
 
     string name;
@@ -84,6 +87,19 @@ public:
     void log(const string& message);
 
     bool primaryKeysExist(const Table &table, const vector<Value> &values);
+
+    Database& operator=(const Database& other) {
+        if (this != &other) {
+            // Copy each member manually, skip const members
+            this->name = other.name;
+            this->tables = other.tables;
+            this->dirPath = other.dirPath;
+            this->configurationPath = other.configurationPath;
+            this->schemesPath = other.schemesPath;
+            this->constraintsPath = other.constraintsPath;
+        }
+        return *this;
+    }
 };
 
 

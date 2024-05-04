@@ -806,3 +806,53 @@ void Database::validateValuesInserting(const Table &table, const string &columnN
                                    + "\": reference for foreign key not found");
     }
 }
+
+void Database::vacuum(Table *table) {
+    // select all
+    vector<Row> rows = selectAll(*table);
+    // regenerate pointers
+    table->pointers = vector<Pointer>();
+    table->pointers.reserve(rows.size());
+    table->header.dataStartShift = 0;
+    table->header.numberOfPointers = 0;
+
+    size_t buffer_size = 0;
+    for(const auto & row : rows) {
+        size_t row_size = 0;
+        for(const auto & value : row.values) row_size += value.size;
+        buffer_size += row_size;
+        table->addPointer(row_size);
+    }
+
+    char* buffer = reinterpret_cast<char*>(malloc(buffer_size));
+    size_t shift = 0;
+    for(const auto &row : rows) {
+        for(int i = 0; i < row.values.size(); i++) {
+            memcpy(buffer + shift, &row.values.at(i), row.values.at(i).size);
+            shift += row.values.at(i).size;
+        }
+    }
+
+    FILE * file = fopen(table->path.string().c_str(), "rb+");
+    fseek(file, -buffer_size, SEEK_END);
+    fwrite(buffer, buffer_size, 1, file);
+    fclose(file);
+
+    saveTableHeaderAndPointers(*table);
+
+    free(buffer);
+}
+
+void Database::deleteRows(const string &tableName, const vector<Row> &rows) {
+    Table* table = getTableByName(tableName);
+    deleteRows(table, rows);
+}
+
+void Database::drop() {
+    try {
+        std::filesystem::remove_all(dirPath);
+        log("DROP");
+    } catch (const std::filesystem::filesystem_error& e) {
+        std::cerr << "Error database \"" + name + "\": " << e.what() << std::endl;
+    }
+}

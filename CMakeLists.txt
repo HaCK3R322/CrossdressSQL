@@ -16,4 +16,16 @@ add_executable(CrossdressSQL main.cpp
         Util.h
         entities/Value.h
         entities/Row.h
+        Manager.h
+        Manager.cpp
+        Manager.h
+        entities/KeyWords.h
+        translation/Translator.h
+        translation/Term.h
+        translation/Term.h
+        translation/Operators.h
+        translation/Factor.h
+        translation/LogicalOperators.h
+        translation/ExpressionAndTerms.h
+        translation/Lexer.h
 )
