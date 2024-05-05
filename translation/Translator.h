@@ -224,6 +224,52 @@ public:
         }
         return -1;
     }
+
+    static vector<map<KeyWords, vector<string>>> extractOrderColumns(vector<string> tokens) {
+        vector<string> selectedColumns = extractColumnNamesForSelect(tokens);
+        vector<map<KeyWords, vector<string>>> sortingInstructions;
+
+        if(tokens.empty()) return sortingInstructions;
+
+        auto tokenIt = tokens.begin();
+        while(*tokenIt != Util::getKeyWordName(KeyWords::ORDER)) {
+            if(tokenIt == tokens.end()) return sortingInstructions;
+            tokenIt++;
+        }
+        tokenIt++;
+        if(*tokenIt != Util::getKeyWordName(KeyWords::BY)) throw invalid_argument("Next word after ORDER must be BY");
+        tokenIt++;
+
+        while(tokenIt != tokens.end()) {
+            map<KeyWords, vector<string>> someMap;
+            vector<string> someColumns;
+
+            if(Util::parseKeyWord(*tokenIt) != KeyWords::NOT_A_KEY_WORD) throw invalid_argument("wrong ORDER BY construction");
+
+            while(tokenIt != tokens.end() && Util::parseKeyWord(*tokenIt) == KeyWords::NOT_A_KEY_WORD) {
+                if(*tokenIt != ",") someColumns.push_back(*tokenIt);
+                tokenIt ++;
+            }
+            if(tokenIt == tokens.end()) {
+                someMap[KeyWords::ASC] = someColumns;
+                sortingInstructions.push_back(someMap);
+                return sortingInstructions;
+            }
+            if(Util::parseKeyWord(*tokenIt) == KeyWords::ASC) {
+                someMap[KeyWords::ASC] = someColumns;
+                sortingInstructions.push_back(someMap);
+            } else if(Util::parseKeyWord(*tokenIt) == KeyWords::DESC) {
+                someMap[KeyWords::DESC] = someColumns;
+                sortingInstructions.push_back(someMap);
+            } else {
+                throw invalid_argument("wrong ORDER BY construction");
+            }
+
+            tokenIt++;
+        }
+
+        return sortingInstructions;
+    }
 };
 
 

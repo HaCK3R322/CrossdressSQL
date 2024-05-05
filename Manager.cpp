@@ -56,13 +56,13 @@ void *Manager::executeQuery(const string &query, const string& databaseName) {
 
     vector<string> tokens = Lexer::tokenize(query);
 
-//    cout << "Tokenized: [";
-//    for(const auto& token: tokens) {
-//        cout << token;
-//
-//        if(token != tokens.back()) cout << ", ";
-//    }
-//    cout << "]" << endl;
+    cout << "Tokenized: [";
+    for(const auto& token: tokens) {
+        cout << token;
+
+        if(token != tokens.back()) cout << ", ";
+    }
+    cout << "]" << endl;
 
     if(Translator::getQueryType(tokens) == KeyWords::SELECT) {
         string tableName = Translator::extractTableName(tokens);
@@ -97,7 +97,9 @@ void *Manager::executeQuery(const string &query, const string& databaseName) {
 
         size_t limit = Translator::extractLimit(tokens);
 
-        return executeSelectQuery(db, columnNames, tableName, factor, limit);
+        vector<map<KeyWords, vector<string>>> sortingInstructions = Translator::extractOrderColumns(tokens);
+
+        return executeSelectQuery(db, columnNames, tableName, factor, limit, sortingInstructions);
     }
 
     return nullptr;
@@ -107,7 +109,8 @@ void *Manager::executeSelectQuery(Database *db,
                                   vector<string> columnNames,
                                   string tablename,
                                   Factor* whereCauseFactor,
-                                  size_t limit) {
+                                  size_t limit,
+                                  vector<map<KeyWords, vector<string>>> sortingInstructions) {
     auto* rows = new vector<Row>;
     *rows = db->selectAll(tablename);
 
@@ -129,6 +132,10 @@ void *Manager::executeSelectQuery(Database *db,
 
     if(rows->size() > limit && limit != -1) {
         *rows = std::vector<Row>(rows->begin(), rows->begin() + limit);
+    }
+
+    if(!sortingInstructions.empty()) {
+        Util::sortRows(*rows, sortingInstructions);
     }
 
     return rows;

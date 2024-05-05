@@ -29,7 +29,8 @@ public:
                              vector<string> columnNames,
                              string tablename,
                              Factor *whereCauseFactor,
-                             size_t limit);
+                             size_t limit,
+                             vector<map<KeyWords, vector<string>>> sortingInstructions);
 };
 
 

@@ -40,6 +40,8 @@ void fillStudentsScheme(Database* db, int numberOfRows) {
 
     db->LOG = false;
     for(int i = 0; i < numberOfRows; i++) {
+        if(i % 10 == 0) weight += 10;
+
         vector<Value> testValues;
         testValues.emplace_back(FieldTypes::INT, &i, sizeof(int));
         testValues.emplace_back(FieldTypes::TEXT, start_of_string_text.data(), 5);

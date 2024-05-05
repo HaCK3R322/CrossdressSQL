@@ -47,6 +47,8 @@ public:
     static bool equal(const Value& value1, const Value& value2);
     static bool canCompareTypes(FieldTypes a, FieldTypes b);
     static int compare(const Value& a, const Value& b);
+
+    static void sortRows(std::vector<Row>& rows, const std::vector<std::map<KeyWords, std::vector<std::string>>>& sortingInstructions);
 };
 
 #endif //CROSSDRESSSQL_UTIL_H

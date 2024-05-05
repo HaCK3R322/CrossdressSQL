@@ -18,8 +18,14 @@ enum class KeyWords {
     VALUES,
     ORDER,
     BY,
+    ASC,
+    DESC,
     IN,
-    LIMIT
+    LIMIT,
+    CREATE,
+    DROP,
+    TABLE,
+    DATABASE
 };
 
 #endif //CROSSDRESSSQL_KEYWORDS_H

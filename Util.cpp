@@ -15,6 +15,8 @@ const map<KeyWords, string> Util::KEY_WORDS_STRING_MAP = {
         {KeyWords::VALUES           , "VALUES"},
         {KeyWords::ORDER            , "ORDER"},
         {KeyWords::BY               , "BY"},
+        {KeyWords::ASC              , "ASC"},
+        {KeyWords::DESC             , "DESC"},
         {KeyWords::IN               , "IN"},
         {KeyWords::LIMIT            , "LIMIT"}
 };
@@ -195,7 +197,7 @@ string Util::convertRowToString(const Row &row) {
 }
 
 std::string Util::convertRowsToString(const vector<Row> &rows) {
-    if (rows.empty()) return "";
+    if (rows.empty()) return "0 rows";
 
     vector<string> columns = rows[0].columns;
 
@@ -241,7 +243,7 @@ std::string Util::convertRowsToString(const vector<Row> &rows) {
         data += "\n";
     }
 
-    return header + "\n" + header_bottom + "\n" + data + "\n";
+    return header + "\n" + header_bottom + "\n" + data + header_bottom + "\n" + to_string(rows.size()) + " rows\n";
 }
 
 bool Util::equal(const vector<Value> &row1, const vector<Value> &row2) {
@@ -304,6 +306,28 @@ int Util::compare(const Value &a, const Value &b) {
         throw invalid_argument("Comparator doesn't know about type of second value");
     }
 
+    if(a.type == FieldTypes::FLOAT) {
+        float a_value = readFloat(a.data);
+
+        if(b.type == FieldTypes::INT) {
+            int b_value = readInt(b.data);
+
+            if(a_value == (float)b_value) return 0;
+            if(a_value > (float)b_value) return 1;
+            if(a_value < (float)b_value) return -1;
+        }
+
+        if(b.type == FieldTypes::FLOAT) {
+            float b_value = readFloat(b.data);
+
+            if(a_value > b_value) return 1;
+            if(a_value < b_value) return -1;
+            return 0;
+        }
+
+        throw invalid_argument("Comparator doesn't know about type of second value");
+    }
+
     if(a.type == FieldTypes::TEXT || a.type == FieldTypes::VARCHAR) {
         string a_str = convertValueToString(a);
         string b_str = convertValueToString(b);
@@ -314,4 +338,29 @@ int Util::compare(const Value &a, const Value &b) {
     }
 
     throw invalid_argument("Comparator doesn't know about type of first value");
+}
+
+void Util::sortRows(std::vector<Row>& rows, const std::vector<std::map<KeyWords, std::vector<std::string>>>& sortingInstructions) {
+    std::sort(rows.begin(), rows.end(), [&](Row& a, Row& b) {
+        for (const auto& instruction : sortingInstructions) {
+            for (const auto& keyValuePair : instruction) {
+                KeyWords sortDirection = keyValuePair.first;
+                for (const auto& columnName : keyValuePair.second) {
+                    Value value1 = *a.getValue(columnName);
+                    Value value2 = *b.getValue(columnName);
+
+                    int comparisonResult = compare(value1, value2);
+
+                    if (comparisonResult == 0) continue; // Same value, move to next sort key
+
+                    if (sortDirection == KeyWords::ASC) {
+                        return comparisonResult == -1;
+                    } else {
+                        return comparisonResult == 1;
+                    }
+                }
+            }
+        }
+        return false;
+    });
 }
