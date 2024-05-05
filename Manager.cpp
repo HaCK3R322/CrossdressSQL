@@ -64,45 +64,48 @@ void *Manager::executeQuery(const string &query, const string& databaseName) {
     }
     cout << "]" << endl;
 
-    if(Translator::getQueryType(tokens) == KeyWords::SELECT) {
-        string tableName = Translator::extractTableName(tokens);
-//        cout << "Table name: " << tableName << endl;
-
-        vector<string> columnNames = Translator::extractColumnNamesForSelect(tokens);
-        if(columnNames.size() == 1 and columnNames[0] == "*") {
-            Table* table = db->getTableByName(tableName);
-            columnNames.clear();
-            for(const auto & field : table->scheme.fields)
-                columnNames.push_back(field.name);
+    KeyWords firstKeyWord = Translator::getFirstTokenAsKeyWord(tokens);
+    switch (firstKeyWord) {
+        case KeyWords::SELECT: {
+            string tableName = Translator::extractTableName(tokens);
+            vector<string> columnNames = Translator::extractColumnNamesForSelect(tokens);
+            if (columnNames.size() == 1 and columnNames[0] == "*") {
+                Table *table = db->getTableByName(tableName);
+                columnNames.clear();
+                for (const auto &field: table->scheme.fields)
+                    columnNames.push_back(field.name);
+            }
+            Factor *factor = Translator::constructFactor(Translator::extractWhereCauseTokens(tokens));
+            size_t limit = Translator::extractLimit(tokens);
+            vector<map<KeyWords, vector<string>>> sortingInstructions = Translator::extractOrderColumns(tokens);
+            return executeSelectQuery(db, columnNames, tableName, factor, limit, sortingInstructions);
         }
+        case KeyWords::DELETE:
+            break;
+        case KeyWords::INSERT:
+            break;
+        case KeyWords::CREATE: {
+            if(tokens.size() < 3) throw invalid_argument("Invalid CREATE query");
 
-//        cout << "ColumnNames: [";
-//        for(const auto& token: columnNames) {
-//            cout << token;
-//
-//            if(token != columnNames.back()) cout << ", ";
-//        }
-//        cout << "]" << endl;
+            if(Util::parseKeyWord(tokens[1]) == KeyWords::DATABASE) {
+                if(Translator::isAppropriateName(tokens[2])) {
+                    createDatabase(tokens[2]);
+                }
 
-//        vector<string> causeTokens = Translator::extractWhereCauseTokens(tokens);
-//        cout << "WHERE expression tokens: [";
-//        for(const auto& token: causeTokens) {
-//            cout << token;
-//
-//            if(token != causeTokens.back()) cout << ", ";
-//        }
-//        cout << "]" << endl;
+                auto* response = new string ;
+                *response = "CREATE DATABASE";
+                return response;
+            } else if(Util::parseKeyWord(tokens[1]) == KeyWords::TABLE) {
 
-        Factor* factor = Translator::constructFactor(Translator::extractWhereCauseTokens(tokens));
+            }
 
-        size_t limit = Translator::extractLimit(tokens);
-
-        vector<map<KeyWords, vector<string>>> sortingInstructions = Translator::extractOrderColumns(tokens);
-
-        return executeSelectQuery(db, columnNames, tableName, factor, limit, sortingInstructions);
+            throw invalid_argument("Invalid CREATE query");
+        }
+        case KeyWords::DROP:
+            break;
+        default:
+            throw invalid_argument("Not a query.");
     }
-
-    return nullptr;
 }
 
 void *Manager::executeSelectQuery(Database *db,

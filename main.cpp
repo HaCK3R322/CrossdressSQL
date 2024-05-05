@@ -236,12 +236,19 @@ int main() {
         cout << ">>";
         getline(cin, query, '\n');
 
-        if(query == "end") break;
+        if(query == "exit") break;
 
         try {
-            vector<Row>* rows = reinterpret_cast<vector<Row>*>(manager.executeQuery(query, "example"));
+            void* responseData = reinterpret_cast<vector<Row>*>(manager.executeQuery(query, "example"));
 
-            cout << Util::convertRowsToString(*rows) << endl;
+            if(Util::splitByDelimiter(query, ' ').size() > 1
+            and Util::splitByDelimiter(query, ' ')[0] == "SELECT") {
+                auto* rows = reinterpret_cast<vector<Row>*>(responseData);
+                cout << Util::convertRowsToString(*rows) << endl;
+            } else {
+                auto* response = reinterpret_cast<string*>(responseData);
+                cout << *response << endl;
+            }
         } catch (invalid_argument ex) {
             cout << "ERROR: " << ex.what() << endl;
         }

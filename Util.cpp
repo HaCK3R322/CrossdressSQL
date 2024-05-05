@@ -2,6 +2,7 @@
 // Created by dicta on 05.05.2024.
 //
 
+#include <iostream>
 #include "Util.h"
 
 const map<KeyWords, string> Util::KEY_WORDS_STRING_MAP = {
@@ -18,7 +19,11 @@ const map<KeyWords, string> Util::KEY_WORDS_STRING_MAP = {
         {KeyWords::ASC              , "ASC"},
         {KeyWords::DESC             , "DESC"},
         {KeyWords::IN               , "IN"},
-        {KeyWords::LIMIT            , "LIMIT"}
+        {KeyWords::LIMIT            , "LIMIT"},
+        {KeyWords::CREATE           , "CREATE"},
+        {KeyWords::DROP             , "DROP"},
+        {KeyWords::TABLE            , "TABLE"},
+        {KeyWords::DATABASE         , "DATABASE"},
 };
 
 string Util::getKeyWordName(KeyWords word) {

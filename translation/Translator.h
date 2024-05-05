@@ -145,15 +145,11 @@ public:
         return true;
     }
 
-    static KeyWords getQueryType(vector<string> tokens) {
+    static KeyWords getFirstTokenAsKeyWord(vector<string> tokens) {
         if(tokens.empty()) throw invalid_argument("Empty query");
 
         string word = tokens[0];
-        if(word == "SELECT") return KeyWords::SELECT;
-        if(word == "INSERT") return KeyWords::INSERT;
-        if(word == "DELETE") return KeyWords::DELETE;
-
-        throw invalid_argument("First word in query must be SELECT/INSERT/DELETE");
+        return Util::parseKeyWord(word);
     }
 
     static vector<string> extractColumnNamesForSelect(vector<string> tokens) {
@@ -269,6 +265,15 @@ public:
         }
 
         return sortingInstructions;
+    }
+
+    static bool isAppropriateName(string name) {
+        if(Util::splitByDelimiter(name, ' ').size() != 1) return false;
+        if(isdigit(name[0])) return false;
+        for(const char& character : name) if(Lexer::characterIsMeaningful(character)) return false;
+        if(Util::parseKeyWord(name) != KeyWords::NOT_A_KEY_WORD) return false;
+
+        return true;
     }
 };
 
