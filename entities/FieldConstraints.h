@@ -6,6 +6,7 @@
 #define CROSSDRESSSQL_FIELDCONSTRAINTS_H
 
 enum class FieldConstraints {
+    NOT_A_CONSTRAINT,
     PRIMARY_KEY,
     FOREIGN_KEY,
     UNIQUE,

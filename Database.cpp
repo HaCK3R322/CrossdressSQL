@@ -120,6 +120,8 @@ void Database::createTable(const TableScheme& scheme) {
 }
 
 bool Database::tableExists(const string& tableName) {
+    if(tables.empty()) return false;
+
     for(auto &table: tables) {
         if(table.scheme.name == tableName) return true;
     }
@@ -142,7 +144,7 @@ void Database::saveAllTablesSchemes() {
 
         for(int i = 0; i < table.scheme.fields.size(); i++) {
             FieldDescription field = table.scheme.fields.at(i);
-            file << field.name << " " << Util::GET_FIELD_TYPE_NAME(field.type);
+            file << field.name << " " << Util::getFieldTypeName(field.type);
             if(i + 1 != table.scheme.fields.size()) {
                 file << ",";
             }
@@ -173,16 +175,16 @@ void Database::saveAllTablesConstraints() {
             string constraintsStringBuilder;
 
             if(field.IS_PRIMARY_KEY) {
-                constraintsStringBuilder += Util::GET_FIELD_CONSTRAINT_NAME(FieldConstraints::PRIMARY_KEY);
+                constraintsStringBuilder += Util::getFieldConstraintName(FieldConstraints::PRIMARY_KEY);
             }
             if (field.IS_UNIQUE) {
-                constraintsStringBuilder += " " + Util::GET_FIELD_CONSTRAINT_NAME(FieldConstraints::UNIQUE) + " ";
+                constraintsStringBuilder += " " + Util::getFieldConstraintName(FieldConstraints::UNIQUE) + " ";
             }
             if(field.NULLABLE) {
-                constraintsStringBuilder += " " + Util::GET_FIELD_CONSTRAINT_NAME(FieldConstraints::NULLABLE);
+                constraintsStringBuilder += " " + Util::getFieldConstraintName(FieldConstraints::NULLABLE);
             }
             if(field.IS_FOREIGN_KEY) {
-                constraintsStringBuilder += " " + Util::GET_FIELD_CONSTRAINT_NAME(FieldConstraints::FOREIGN_KEY) + " ";
+                constraintsStringBuilder += " " + Util::getFieldConstraintName(FieldConstraints::FOREIGN_KEY) + " ";
                 constraintsStringBuilder += field.REFERENCE + " ";
             }
 
@@ -232,7 +234,7 @@ void Database::readTable(const string& tableName) {
                 for(auto &fieldString: Util::splitByDelimiter(fieldsString, ',')) {
                     vector<string> nameAndType = Util::splitByDelimiter(fieldString, ' ');
                     FieldDescription fieldDescription(nameAndType.at(0),
-                                                      Util::PARSE_FIELD_TYPE(nameAndType.at(1)));
+                                                      Util::parseFieldType(nameAndType.at(1)));
 
                     scheme.fields.push_back(fieldDescription);
                 }
@@ -257,7 +259,7 @@ void Database::readTable(const string& tableName) {
                         vector<string> constraintsArray = Util::splitByDelimiter(constraintsString, ' ');
 
                         for(int j = 0; j < constraintsArray.size(); j++) {
-                            FieldConstraints constraint = Util::PARSE_FIELD_CONSTRAINT(constraintsArray.at(j));
+                            FieldConstraints constraint = Util::parseFieldConstraint(constraintsArray.at(j));
 
                             if(constraint == FieldConstraints::UNIQUE) scheme.fields.at(i).IS_UNIQUE = true;
                             if(constraint == FieldConstraints::NULLABLE) scheme.fields.at(i).NULLABLE = true;
@@ -459,9 +461,9 @@ void Database::validateValueInserting(const Table &table, const string& columnNa
         throw invalid_argument("Error inserting value into \""
                                + fieldDescription.name
                                + "\": type "
-                               + Util::GET_FIELD_TYPE_NAME(value.type)
+                               + Util::getFieldTypeName(value.type)
                                + " cannot be casted to type "
-                               + Util::GET_FIELD_TYPE_NAME(fieldDescription.type));
+                               + Util::getFieldTypeName(fieldDescription.type));
 
     if (fieldDescription.IS_UNIQUE || fieldDescription.IS_PRIMARY_KEY) {
         vector<Row> rows = selectAll(table);
@@ -774,9 +776,9 @@ void Database::validateValuesInserting(const Table &table, const string &columnN
         throw invalid_argument("Error inserting value into \""
                                + fieldDescription.name
                                + "\": type "
-                               + Util::GET_FIELD_TYPE_NAME(type)
+                               + Util::getFieldTypeName(type)
                                + " cannot be casted to type "
-                               + Util::GET_FIELD_TYPE_NAME(fieldDescription.type));
+                               + Util::getFieldTypeName(fieldDescription.type));
 
     if (fieldDescription.IS_UNIQUE || fieldDescription.IS_PRIMARY_KEY) {
         vector<Row> rows = selectAll(table);

@@ -6,6 +6,7 @@
 #define CROSSDRESSSQL_FIELDTYPES_H
 
 enum class FieldTypes {
+    NOT_A_FIELD_TYPE,
     INT,
     FLOAT,
     VARCHAR,

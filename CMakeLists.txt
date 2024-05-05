@@ -28,4 +28,5 @@ add_executable(CrossdressSQL main.cpp
         translation/LogicalOperators.h
         translation/ExpressionAndTerms.h
         translation/Lexer.h
+        Util.cpp
 )

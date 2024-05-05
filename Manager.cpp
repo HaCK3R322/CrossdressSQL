@@ -3,6 +3,8 @@
 //
 
 #include "Manager.h"
+#include "translation/Lexer.h"
+#include "translation/Translator.h"
 
 void Manager::createDatabase(const string &databaseName) {
     for(const auto & database : databases) {
@@ -32,60 +34,84 @@ void Manager::dropDatabase(const string& databaseName) {
     databases = newDatabases;
 }
 
-void *Manager::executeQuery(const string &query, const string& databaseName) {
-    // there will be (by now) 3 main operations - select, insert and delete
-    // SELECT * FROM example;
+void Manager::createTable(const string &databaseName, const TableScheme& tableScheme) {
+    Database* db = getDatabase(databaseName);
+    if(db) {
+        db->createTable(tableScheme);
+    }
+}
 
-    KeyWords firstWord = Util::PARSE_KEY_WORD(Util::splitByDelimiter(query, ' ')[0]);
-
-    switch (firstWord) {
-        case KeyWords::SELECT:
-            cout << "SELECT" << endl;
+Database *Manager::getDatabase(const string &databaseName) {
+    for(auto& db: databases) {
+        if(db.name == databaseName) {
+            return &db;
+        }
     }
 
     return nullptr;
 }
 
-vector<string> Manager::extractColumnNames(const string &query) {
-    std::vector<std::string> columnNames;
+void *Manager::executeQuery(const string &query, const string& databaseName) {
+    Database* db = getDatabase(databaseName);
 
-    // Convert the query to a lowercase version to handle case-insensitivity
-    std::string queryLower = query;
-    std::transform(queryLower.begin(), queryLower.end(), queryLower.begin(),
-                   [](unsigned char c) { return std::tolower(c); });
+    vector<string> tokens = Lexer::tokenize(query);
 
-    // Find positions of 'select' and 'from'
-    std::size_t posSelect = queryLower.find("select");
-    std::size_t posFrom = queryLower.find("from");
+    cout << "Tokenized: [";
+    for(const auto& token: tokens) {
+        cout << token;
 
-    if (posSelect == std::string::npos || posFrom == std::string::npos || posSelect >= posFrom) {
-        return columnNames; // Return empty if 'select' or 'from' not found, or 'from' comes before 'select'
+        if(token != tokens.back()) cout << ", ";
+    }
+    cout << "]" << endl;
+
+    if(Translator::getQueryType(tokens) == KeyWords::SELECT) {
+        vector<string> columnNames = Translator::extractColumnNamesForSelect(tokens);
+
+        cout << "ColumnNames: [";
+        for(const auto& token: columnNames) {
+            cout << token;
+
+            if(token != columnNames.back()) cout << ", ";
+        }
+        cout << "]" << endl;
+
+        string tableName = Translator::extractTableName(tokens);
+        cout << "Table name: " << tableName << endl;
+
+        vector<string> causeTokens = Translator::extractWhereCauseTokens(tokens);
+        cout << "WHERE expression tokens: [";
+        for(const auto& token: causeTokens) {
+            cout << token;
+
+            if(token != causeTokens.back()) cout << ", ";
+        }
+        cout << "]" << endl;
+
+        Factor* factor = Translator::constructFactor(Translator::extractWhereCauseTokens(tokens));
+
+        return executeSelectQuery(db, columnNames, tableName, factor);
     }
 
-    // Extract the substring containing the column names
-    std::string columnPart = query.substr(posSelect + 6, posFrom - (posSelect + 6));
+    return nullptr;
+}
 
-    // Trim leading and trailing whitespaces
-    auto trim = [](const std::string& str) {
-        size_t first = str.find_first_not_of(" \t");
-        size_t last = str.find_last_not_of(" \t");
-        return first == std::string::npos ? "" : str.substr(first, (last - first + 1));
-    };
-    columnPart = trim(columnPart);
+void *Manager::executeSelectQuery(Database *db,
+                                  vector<string> columnNames,
+                                  string tablename,
+                                  Factor* whereCauseFactor) {
+    vector<Row> rows = db->selectAll(tablename);
 
-    // Split the string by commas to get individual column names
-    std::istringstream iss(columnPart);
-    std::string columnName;
-    while (std::getline(iss, columnName, ',')) {
-        columnName = trim(columnName);
-        if (!columnName.empty()) {
-            columnNames.push_back(columnName);
+    auto* factoredRows = new vector<Row>;
+
+    factoredRows->reserve(rows.size());
+
+    for(const auto & row : rows) {
+        if(whereCauseFactor->evalualte(Translator::createVariables(columnNames, row))) {
+            factoredRows->push_back(row);
         }
     }
 
-    for(auto const & name : columnNames) {
-        cout << name << endl;
-    }
+    *factoredRows = db->selectColumns(tablename, *factoredRows, columnNames);
 
-    return columnNames;
+    return factoredRows;
 }

@@ -8,17 +8,22 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <regex>
 #include "../Util.h"
 
 using namespace std;
 
 class Lexer {
 public:
-    static vector<string> tokenize(const string& expression) {
+    static vector<string> tokenize(string expression) {
+        expression = replaceLogicOperators(expression);
+
         vector<string> tokens;
 
         for(int i = 0; i < expression.size(); i++) {
             const char character = expression[i];
+
+            if(character == ' ') continue;
 
             if(character == '\'') {
                 string token;
@@ -35,7 +40,8 @@ public:
             or character == ')'
             or character == '!'
             or character == '&'
-            or character == '|') {
+            or character == '|'
+            or character == ',') {
                 tokens.emplace_back(1, character);
                 continue;
             }
@@ -82,7 +88,9 @@ public:
                or character == '\''
                or character == '='
                or character == '<'
-               or character == '>';
+               or character == '>'
+               or character == ','
+               or character == ' ';
     }
 
     static bool characterIsOperator(char character) {
@@ -115,6 +123,50 @@ public:
         if(character.size() != 1) return 999;
 
         return getLogicalPriority(character[0]);
+    }
+
+    /**
+     * AND, OR and NOT -> &, | and !
+     * @param inputText query
+     * @return new string
+     */
+    static string replaceLogicOperators(std::string inputText) {
+        std::string text = inputText;
+        std::vector<std::string> quotes;
+        std::regex quoteRegex(R"('([^']*)')"); // Regex to find single-quoted text
+
+        // Save the quoted text and replace it with a placeholder
+        std::smatch matches;
+        while (std::regex_search(text, matches, quoteRegex)) {
+            quotes.push_back(matches[0]);
+            text.replace(matches.position(0), matches.length(0), "\x01" + std::to_string(quotes.size() - 1) + "\x01");
+        }
+
+        // Define regexes for whole word replacements
+        std::regex andRegex(R"(\bAND\b)");
+        std::regex orRegex(R"(\bOR\b)");
+        std::regex notRegex(R"(\bNOT\b)");
+
+        // Perform replacements outside of single-quoted text
+        text = std::regex_replace(text, andRegex, "&");
+        text = std::regex_replace(text, orRegex, "|");
+        text = std::regex_replace(text, notRegex, "!");
+
+        // Restore the quoted text
+        for (size_t i = 0; i < quotes.size(); i++) {
+            text = std::regex_replace(text, std::regex("\\x01" + std::to_string(i) + "\\x01"), quotes[i]);
+        }
+
+        return text;
+    }
+
+    static string removeSpaces(std::string text) {
+        std::string noSpaces;
+        for (char c : text) {
+            if (c != ' ')
+                noSpaces += c;
+        }
+        return noSpaces;
     }
 };
 
