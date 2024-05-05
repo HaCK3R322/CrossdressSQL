@@ -25,8 +25,11 @@ public:
     Database* getDatabase(const string& databaseName);
 
 
-    void *
-    executeSelectQuery(Database *database, vector<string> columnNames, string tablename, Factor *whereCauseFactor);
+    void *executeSelectQuery(Database *database,
+                             vector<string> columnNames,
+                             string tablename,
+                             Factor *whereCauseFactor,
+                             size_t limit);
 };
 
 

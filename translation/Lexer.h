@@ -24,6 +24,7 @@ public:
             const char character = expression[i];
 
             if(character == ' ') continue;
+            if(character == ';') break;
 
             if(character == '\'') {
                 string token;
@@ -90,7 +91,9 @@ public:
                or character == '<'
                or character == '>'
                or character == ','
-               or character == ' ';
+               or character == ' '
+               or character == ';'
+               or character == '.';
     }
 
     static bool characterIsOperator(char character) {

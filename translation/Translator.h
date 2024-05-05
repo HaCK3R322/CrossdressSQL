@@ -208,6 +208,22 @@ public:
         }
         return causeTokens;
     }
+
+    static size_t extractLimit(vector<string> tokens) {
+        auto tokenIt = tokens.begin();
+        while (tokenIt != tokens.end()) {
+            if(*tokenIt == Util::getKeyWordName(KeyWords::LIMIT)) {
+                if(tokenIt + 1 != tokens.end()) {
+                    return stoull(*(tokenIt + 1));
+                } else {
+                    throw invalid_argument("int number required after LIMIT word");
+                }
+            }
+
+            tokenIt++;
+        }
+        return -1;
+    }
 };
 
 

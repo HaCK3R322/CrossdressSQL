@@ -56,40 +56,48 @@ void *Manager::executeQuery(const string &query, const string& databaseName) {
 
     vector<string> tokens = Lexer::tokenize(query);
 
-    cout << "Tokenized: [";
-    for(const auto& token: tokens) {
-        cout << token;
-
-        if(token != tokens.back()) cout << ", ";
-    }
-    cout << "]" << endl;
+//    cout << "Tokenized: [";
+//    for(const auto& token: tokens) {
+//        cout << token;
+//
+//        if(token != tokens.back()) cout << ", ";
+//    }
+//    cout << "]" << endl;
 
     if(Translator::getQueryType(tokens) == KeyWords::SELECT) {
-        vector<string> columnNames = Translator::extractColumnNamesForSelect(tokens);
-
-        cout << "ColumnNames: [";
-        for(const auto& token: columnNames) {
-            cout << token;
-
-            if(token != columnNames.back()) cout << ", ";
-        }
-        cout << "]" << endl;
-
         string tableName = Translator::extractTableName(tokens);
-        cout << "Table name: " << tableName << endl;
+//        cout << "Table name: " << tableName << endl;
 
-        vector<string> causeTokens = Translator::extractWhereCauseTokens(tokens);
-        cout << "WHERE expression tokens: [";
-        for(const auto& token: causeTokens) {
-            cout << token;
-
-            if(token != causeTokens.back()) cout << ", ";
+        vector<string> columnNames = Translator::extractColumnNamesForSelect(tokens);
+        if(columnNames.size() == 1 and columnNames[0] == "*") {
+            Table* table = db->getTableByName(tableName);
+            columnNames.clear();
+            for(const auto & field : table->scheme.fields)
+                columnNames.push_back(field.name);
         }
-        cout << "]" << endl;
+
+//        cout << "ColumnNames: [";
+//        for(const auto& token: columnNames) {
+//            cout << token;
+//
+//            if(token != columnNames.back()) cout << ", ";
+//        }
+//        cout << "]" << endl;
+
+//        vector<string> causeTokens = Translator::extractWhereCauseTokens(tokens);
+//        cout << "WHERE expression tokens: [";
+//        for(const auto& token: causeTokens) {
+//            cout << token;
+//
+//            if(token != causeTokens.back()) cout << ", ";
+//        }
+//        cout << "]" << endl;
 
         Factor* factor = Translator::constructFactor(Translator::extractWhereCauseTokens(tokens));
 
-        return executeSelectQuery(db, columnNames, tableName, factor);
+        size_t limit = Translator::extractLimit(tokens);
+
+        return executeSelectQuery(db, columnNames, tableName, factor, limit);
     }
 
     return nullptr;
@@ -98,20 +106,30 @@ void *Manager::executeQuery(const string &query, const string& databaseName) {
 void *Manager::executeSelectQuery(Database *db,
                                   vector<string> columnNames,
                                   string tablename,
-                                  Factor* whereCauseFactor) {
-    vector<Row> rows = db->selectAll(tablename);
+                                  Factor* whereCauseFactor,
+                                  size_t limit) {
+    auto* rows = new vector<Row>;
+    *rows = db->selectAll(tablename);
 
-    auto* factoredRows = new vector<Row>;
+    if(whereCauseFactor) {
+        auto* factoredRows = new vector<Row>;
 
-    factoredRows->reserve(rows.size());
+        factoredRows->reserve(rows->size());
 
-    for(const auto & row : rows) {
-        if(whereCauseFactor->evalualte(Translator::createVariables(columnNames, row))) {
-            factoredRows->push_back(row);
+        for(const auto & row : *rows) {
+            if(whereCauseFactor->evalualte(Translator::createVariables(columnNames, row))) {
+                factoredRows->push_back(row);
+            }
         }
+
+        rows = factoredRows;
     }
 
-    *factoredRows = db->selectColumns(tablename, *factoredRows, columnNames);
+    *rows = db->selectColumns(tablename, *rows, columnNames);
 
-    return factoredRows;
+    if(rows->size() > limit && limit != -1) {
+        *rows = std::vector<Row>(rows->begin(), rows->begin() + limit);
+    }
+
+    return rows;
 }

@@ -227,14 +227,23 @@ int main() {
 
     manager.createDatabase("example");
     manager.createTable("example", getStudentScheme());
-    fillStudentsScheme(manager.getDatabase("example"), 10);
+    fillStudentsScheme(manager.getDatabase("example"), 100);
 
-    string query = "SELECT name, id FROM students WHERE id = 4";
-    cout << "Expression:\n" << query << endl << endl;
+    while(true) {
+        string query;
+        cout << ">>";
+        getline(cin, query, '\n');
 
-    vector<Row>* rows = reinterpret_cast<vector<Row>*>(manager.executeQuery(query, "example"));
+        if(query == "end") break;
 
-    cout << Util::convertRowsToString(*rows) << endl;
+        try {
+            vector<Row>* rows = reinterpret_cast<vector<Row>*>(manager.executeQuery(query, "example"));
+
+            cout << Util::convertRowsToString(*rows) << endl;
+        } catch (invalid_argument ex) {
+            cout << "ERROR: " << ex.what() << endl;
+        }
+    }
 
     return 0;
 }
