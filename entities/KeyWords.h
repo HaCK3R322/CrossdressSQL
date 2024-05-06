@@ -13,6 +13,7 @@ enum class KeyWords {
     FROM,
     DELETE,
     INSERT,
+    TO,
     WHERE,
     COUNT,
     VALUES,
@@ -25,7 +26,8 @@ enum class KeyWords {
     CREATE,
     DROP,
     TABLE,
-    DATABASE
+    DATABASE,
+    CONNECT
 };
 
 #endif //CROSSDRESSSQL_KEYWORDS_H

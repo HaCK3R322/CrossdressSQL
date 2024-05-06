@@ -21,16 +21,17 @@ public:
 
 //private:
     vector<Database> databases;
+    Database* currentDatabase = nullptr;
 
     Database* getDatabase(const string& databaseName);
+    void switchToDatabase(const string& databaseName);
 
 
-    void *executeSelectQuery(Database *database,
-                             vector<string> columnNames,
-                             string tablename,
+    void *executeSelectQuery(const vector<string>& columnNames,
+                             const string& tablename,
                              Factor *whereCauseFactor,
                              size_t limit,
-                             vector<map<KeyWords, vector<string>>> sortingInstructions);
+                             const vector<map<KeyWords, vector<string>>>& sortingInstructions);
 };
 
 

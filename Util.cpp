@@ -24,6 +24,8 @@ const map<KeyWords, string> Util::KEY_WORDS_STRING_MAP = {
         {KeyWords::DROP             , "DROP"},
         {KeyWords::TABLE            , "TABLE"},
         {KeyWords::DATABASE         , "DATABASE"},
+        {KeyWords::CONNECT          , "CONNECT"},
+        {KeyWords::TO               , "TO"}
 };
 
 string Util::getKeyWordName(KeyWords word) {
