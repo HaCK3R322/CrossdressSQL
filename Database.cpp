@@ -489,6 +489,12 @@ void Database::validateValueInserting(const Table &table, const string& columnNa
                                    + fieldDescription.name
                                    + "\": reference for foreign key not found");
     }
+
+    if(!fieldDescription.NULLABLE) {
+        if(value.size == 0) throw invalid_argument("Error inserting value into \""
+                                                   + fieldDescription.name
+                                                   + "\": can not be NULL");
+    }
 }
 
 bool Database::primaryKeyExists(const Table &table, const Value &value) {
@@ -617,10 +623,13 @@ void Database::saveTableHeaderAndPointers(const Table &table) {
  * @param rows rows
  */
 void Database::deleteRows(Table* table, const vector<Row>& rowsToDelete) {
+    int kek;
+
     for(auto & row : rowsToDelete) {
         table->erasePointer(row.pointer);
     }
 
+    int lol;
     saveTableHeaderAndPointers(*table);
 }
 
@@ -706,24 +715,25 @@ vector<Row> Database::selectColumns(string tableName, const vector<Row> &rows, c
     return selectColumns(table->scheme, rows, columnNames);
 }
 
-void Database::insert(const string &tableName, const vector<string> &columns, vector<vector<Value>> values) {
+void Database::insert(const string &tableName, const vector<string> &columns, vector<vector<Value>> valuesToInsert) {
     Table* table = getTableByName(tableName);
 
-    if(values.empty()) return;
+    vector<Value> values;
+    values.reserve(table->scheme.fields.size());
 
     // constraints check
-    if(columns.size() != values[0].size()) {
-        throw std::invalid_argument("Cannot insert values into "
+    if(columns.size() != valuesToInsert[0].size()) {
+        throw std::invalid_argument("Cannot insert valuesToInsert into "
                                     + table->scheme.name
-                                    + ": different length between columns and values arrays (" + to_string(columns.size()) + " / " + to_string(values.size()) + ")");
+                                    + ": different length between columns and valuesToInsert arrays (" + to_string(columns.size()) + " / " + to_string(valuesToInsert.size()) + ")");
     }
 
 
     ofstream file(table->path, ios::out | ios::binary | ios::app);
-    if(!file.is_open()) throw std::invalid_argument("Cannot insert values into " + table->scheme.name + ": cannot open file with data");
+    if(!file.is_open()) throw std::invalid_argument("Cannot insert valuesToInsert into " + table->scheme.name + ": cannot open file with data");
 
     size_t valuesDataSize = 0;
-    for(const auto & row : values) {
+    for(const auto & row : valuesToInsert) {
         for(const auto & value : row) {
             valuesDataSize += value.size;
         }
@@ -732,15 +742,15 @@ void Database::insert(const string &tableName, const vector<string> &columns, ve
     //validation
     for(int i = 0; i < columns.size(); i++) {
         vector<Value> column_of_values;
-        for(int j = 0; j < values.size(); j++) {
-            column_of_values.push_back(values[j][i]);
+        for(int j = 0; j < valuesToInsert.size(); j++) {
+            column_of_values.push_back(valuesToInsert[j][i]);
         }
         validateValuesInserting(*table, columns.at(i), column_of_values);
     }
 
     char* buffer = reinterpret_cast<char *>(malloc(valuesDataSize));
     size_t shift = 0;
-    for(auto const &row : values) {
+    for(auto const &row : valuesToInsert) {
         size_t valueSize = 0;
         for(int i = 0; i < columns.size(); i++) {
             memcpy(buffer + shift, row.at(i).data, row.at(i).size);

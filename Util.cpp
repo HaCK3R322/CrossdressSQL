@@ -20,12 +20,14 @@ const map<KeyWords, string> Util::KEY_WORDS_STRING_MAP = {
         {KeyWords::DESC             , "DESC"},
         {KeyWords::IN               , "IN"},
         {KeyWords::LIMIT            , "LIMIT"},
+        {KeyWords::OFFSET           , "OFFSET"},
         {KeyWords::CREATE           , "CREATE"},
         {KeyWords::DROP             , "DROP"},
         {KeyWords::TABLE            , "TABLE"},
         {KeyWords::DATABASE         , "DATABASE"},
         {KeyWords::CONNECT          , "CONNECT"},
-        {KeyWords::TO               , "TO"}
+        {KeyWords::TO               , "TO"},
+        {KeyWords::INTO             , "INTO"}
 };
 
 string Util::getKeyWordName(KeyWords word) {
@@ -37,8 +39,9 @@ string Util::getKeyWordName(KeyWords word) {
 }
 
 KeyWords Util::parseKeyWord(const string &word) {
+    string wordUpperCase = toUpperCase(word);
     for (const auto& pair : KEY_WORDS_STRING_MAP) {
-        if (pair.second == word) {
+        if (pair.second == wordUpperCase) {
             return pair.first;
         }
     }
@@ -61,8 +64,9 @@ string Util::getFieldTypeName(FieldTypes type) {
 }
 
 FieldTypes Util::parseFieldType(const string& typeString) {
+    string wordUpperCase = toUpperCase(typeString);
     for (const auto& pair : FIELD_TYPES_STRING_MAP) {
-        if (pair.second == typeString) {
+        if (pair.second == wordUpperCase) {
             return pair.first;
         }
     }
@@ -85,8 +89,9 @@ string Util::getFieldConstraintName(FieldConstraints constraint) {
 }
 
 FieldConstraints Util::parseFieldConstraint(const string& constraint) {
+    string wordUpperCase = toUpperCase(constraint);
     for (const auto& pair : FIELD_CONSTRAINTS_STRING_MAP) {
-        if (pair.second == constraint) {
+        if (pair.second == wordUpperCase) {
             return pair.first;
         }
     }
@@ -370,4 +375,66 @@ void Util::sortRows(std::vector<Row>& rows, const std::vector<std::map<KeyWords,
         }
         return false;
     });
+}
+
+std::string Util::toUpperCase(const string &word) {
+    std::string result;
+    result.reserve(word.size()); // Allocate memory for the result string
+    for (char ch : word) {
+        result += toupper(static_cast<unsigned char>(ch)); // Ensure proper conversion
+    }
+    return result;
+}
+
+vector<vector<Value>> Util::parseValues(TableScheme scheme, vector<string> columnNames, vector<vector<string>> valuesStrings) {
+
+    vector<vector<Value>> parsedValues;
+
+    for(auto const& valuesStringArray : valuesStrings) {
+
+        if(valuesStringArray.size() != columnNames.size()) throw invalid_argument("Cannot parse values: not all columns specified, or specified too much");
+        vector<Value> values;
+
+        for(int i = 0; i < columnNames.size(); i++) {
+
+            string valueStr = valuesStringArray.at(i);
+            FieldTypes type = scheme.getFieldDescriptionByName(columnNames.at(i)).type;
+
+            switch (type) {
+                case FieldTypes::NOT_A_FIELD_TYPE:
+                    throw invalid_argument("TABLE SCHEME CONTAINS WRONG COLUMN TYPE (column #" + to_string(i) + ")");
+                case FieldTypes::INT: {
+                    int* data = new int;
+                    *data = stoi(valueStr);
+                    values.emplace_back(type, data, sizeof(int));
+                    break;
+                }
+                case FieldTypes::FLOAT: {
+                    float* data = new float;
+                    *data = stof(valueStr);
+                    values.emplace_back(type, data, sizeof(float));
+                    break;
+                }
+                case FieldTypes::VARCHAR: {
+                    char* data = reinterpret_cast<char*>(malloc(valueStr.size() - 2));
+                    memcpy(data, valueStr.data() + 1, valueStr.size() - 2);
+                    values.emplace_back(type, data, valueStr.size() - 2);
+                    break;
+                }
+                case FieldTypes::TEXT: {
+                    char* data = reinterpret_cast<char*>(malloc(valueStr.size() - 1));
+                    for(int charPos = 0; charPos < valueStr.size() - 2; charPos ++) {
+                        *(data + charPos) = valueStr[charPos + 1];
+                    }
+                    *(data + valueStr.size() - 2) = '\0';
+                    values.emplace_back(type, data, valueStr.size() - 1);
+                    break;
+                }
+            }
+        }
+
+        parsedValues.push_back(values);
+    }
+
+    return parsedValues;
 }

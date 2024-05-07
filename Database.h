@@ -41,7 +41,7 @@ public:
 
     void insert(const string& tableName, const vector<string>& columns, const vector<Value>& values);
     void insert(const string& tableName, const vector<Value>& values);
-    void insert(const string& tableName, const vector<string>& columns, vector<vector<Value>> values);
+    void insert(const string& tableName, const vector<string>& columns, vector<vector<Value>> valuesToInsert);
 
     void deleteRows(Table* table, const vector<Row>& rows);
     void deleteRows(const string& tableName, const vector<Row>& rows);

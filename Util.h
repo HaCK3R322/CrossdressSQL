@@ -12,6 +12,7 @@
 #include "entities/Row.h"
 #include "entities/KeyWords.h"
 #include "entities/FieldDescription.h"
+#include "entities/TableScheme.h"
 #include <stdexcept>
 #include <algorithm>
 
@@ -38,6 +39,7 @@ public:
     static char* readVarchar(void* data);
     static string convertValueToString(const Value& value);
     static string convertRowToString(const Row& row);
+    static string toUpperCase(const std::string &word);
 
     static std::string convertRowsToString(const std::vector<Row>& rows);
     static size_t getSizeOfValue(const FieldDescription& correspondingField, const Value& value);
@@ -47,6 +49,7 @@ public:
     static bool equal(const Value& value1, const Value& value2);
     static bool canCompareTypes(FieldTypes a, FieldTypes b);
     static int compare(const Value& a, const Value& b);
+    static vector<vector<Value>> parseValues(TableScheme scheme, vector<string> columnNames, vector<vector<string>> valuesStrings);
 
     static void sortRows(std::vector<Row>& rows, const std::vector<std::map<KeyWords, std::vector<std::string>>>& sortingInstructions);
 };

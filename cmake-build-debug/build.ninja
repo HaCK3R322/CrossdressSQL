@@ -51,25 +51,25 @@ build cmake_object_order_depends_target_CrossdressSQL: phony || CMakeFiles/Cross
 
 build CMakeFiles/CrossdressSQL.dir/main.cpp.obj: CXX_COMPILER__CrossdressSQL_unscanned_Debug C$:/Users/dicta/CLionProjects/CrossdressSQL/main.cpp || cmake_object_order_depends_target_CrossdressSQL
   DEP_FILE = CMakeFiles\CrossdressSQL.dir\main.cpp.obj.d
-  FLAGS = -g -fdiagnostics-color=always
+  FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
   OBJECT_DIR = CMakeFiles\CrossdressSQL.dir
   OBJECT_FILE_DIR = CMakeFiles\CrossdressSQL.dir
 
 build CMakeFiles/CrossdressSQL.dir/Database.cpp.obj: CXX_COMPILER__CrossdressSQL_unscanned_Debug C$:/Users/dicta/CLionProjects/CrossdressSQL/Database.cpp || cmake_object_order_depends_target_CrossdressSQL
   DEP_FILE = CMakeFiles\CrossdressSQL.dir\Database.cpp.obj.d
-  FLAGS = -g -fdiagnostics-color=always
+  FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
   OBJECT_DIR = CMakeFiles\CrossdressSQL.dir
   OBJECT_FILE_DIR = CMakeFiles\CrossdressSQL.dir
 
 build CMakeFiles/CrossdressSQL.dir/Manager.cpp.obj: CXX_COMPILER__CrossdressSQL_unscanned_Debug C$:/Users/dicta/CLionProjects/CrossdressSQL/Manager.cpp || cmake_object_order_depends_target_CrossdressSQL
   DEP_FILE = CMakeFiles\CrossdressSQL.dir\Manager.cpp.obj.d
-  FLAGS = -g -fdiagnostics-color=always
+  FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
   OBJECT_DIR = CMakeFiles\CrossdressSQL.dir
   OBJECT_FILE_DIR = CMakeFiles\CrossdressSQL.dir
 
 build CMakeFiles/CrossdressSQL.dir/Util.cpp.obj: CXX_COMPILER__CrossdressSQL_unscanned_Debug C$:/Users/dicta/CLionProjects/CrossdressSQL/Util.cpp || cmake_object_order_depends_target_CrossdressSQL
   DEP_FILE = CMakeFiles\CrossdressSQL.dir\Util.cpp.obj.d
-  FLAGS = -g -fdiagnostics-color=always
+  FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
   OBJECT_DIR = CMakeFiles\CrossdressSQL.dir
   OBJECT_FILE_DIR = CMakeFiles\CrossdressSQL.dir
 

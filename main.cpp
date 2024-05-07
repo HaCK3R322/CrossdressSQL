@@ -229,7 +229,7 @@ int main() {
 
     manager.createDatabase("example");
     manager.createTable("example", getStudentScheme());
-    fillStudentsScheme(manager.getDatabase("example"), 100);
+    fillStudentsScheme(manager.getDatabase("example"), 10);
 
     while(true) {
         string query;
@@ -242,7 +242,7 @@ int main() {
             void* responseData = reinterpret_cast<vector<Row>*>(manager.executeQuery(query, "example"));
 
             if(Util::splitByDelimiter(query, ' ').size() > 1
-            and Util::splitByDelimiter(query, ' ')[0] == "SELECT") {
+            and Util::parseKeyWord(Util::splitByDelimiter(query, ' ')[0]) == KeyWords::SELECT) {
                 auto* rows = reinterpret_cast<vector<Row>*>(responseData);
                 cout << Util::convertRowsToString(*rows) << endl;
             } else {

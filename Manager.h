@@ -31,6 +31,7 @@ public:
                              const string& tablename,
                              Factor *whereCauseFactor,
                              size_t limit,
+                             size_t offset,
                              const vector<map<KeyWords, vector<string>>>& sortingInstructions);
 };
 

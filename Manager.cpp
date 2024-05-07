@@ -53,6 +53,7 @@ Database *Manager::getDatabase(const string &databaseName) {
 
 void *Manager::executeQuery(const string &query, const string& databaseName) {
     vector<string> tokens = Lexer::tokenize(query);
+    Translator::validateTokensOrder(tokens);
 
     if(!currentDatabase
     and tokens.size() != 2
@@ -82,8 +83,9 @@ void *Manager::executeQuery(const string &query, const string& databaseName) {
             }
             Factor *factor = Translator::constructFactor(Translator::extractWhereCauseTokens(tokens));
             size_t limit = Translator::extractLimit(tokens);
+            size_t offset = Translator::extractOffset(tokens);
             vector<map<KeyWords, vector<string>>> sortingInstructions = Translator::extractOrderColumns(tokens);
-            return executeSelectQuery(columnNames, tableName, factor, limit, sortingInstructions);
+            return executeSelectQuery(columnNames, tableName, factor, limit, offset, sortingInstructions);
         }
         case KeyWords::DELETE: {
             if(tokens.size() < 3 and Util::parseKeyWord(tokens[1]) != KeyWords::FROM) throw invalid_argument("wrong DELETE query");
@@ -100,12 +102,12 @@ void *Manager::executeQuery(const string &query, const string& databaseName) {
             for (const auto &field: table->scheme.fields) columnNames.push_back(field.name);
             Factor *factor = Translator::constructFactor(Translator::extractWhereCauseTokens(tokens));
             size_t limit = -1;
+            size_t offset = 0;
             vector<map<KeyWords, vector<string>>> sortingInstructions;
 
-            void* queryResponse = executeSelectQuery(columnNames, tableName, factor, limit, sortingInstructions);
+            void* queryResponse = executeSelectQuery(columnNames, tableName, factor, limit, offset, sortingInstructions);
             auto* rows = reinterpret_cast<vector<Row>*>(queryResponse);
 
-            // TODO: fix erasing RANDOM rows (but right number)
             currentDatabase->deleteRows(table, *rows);
 
             auto* response = new string ;
@@ -114,11 +116,15 @@ void *Manager::executeQuery(const string &query, const string& databaseName) {
         }
         case KeyWords::INSERT: {
             // get table scheme by name
+            string tableName = Translator::extractTableName(tokens);
+            TableScheme scheme = currentDatabase->getTableByName(tableName)->scheme;
             // column names (written or if miss then from scheme)
+            vector<string> columnNames = Translator::extractColumnNamesForInsert(tokens);
             // extract values
-            // for each
-            //      try to parse it
-            // insert values into table
+            vector<vector<string>> valuesStrings = Translator::extractValuesForInsert(tokens);
+            vector<vector<Value>> values = Util::parseValues(scheme, columnNames, valuesStrings);
+
+            currentDatabase->insert(tableName, columnNames, values);
 
             auto* response = new string ;
             *response = "INSERT";
@@ -156,7 +162,7 @@ void *Manager::executeQuery(const string &query, const string& databaseName) {
                 currentDatabase->dropTable(tokens[2]);
 
                 auto* response = new string ;
-                *response = "DROP DATABASE";
+                *response = "DROP TABLE";
                 return response;
             }
 
@@ -184,6 +190,7 @@ void *Manager::executeSelectQuery(const vector<string>& columnNames,
                                   const string& tablename,
                                   Factor* whereCauseFactor,
                                   size_t limit,
+                                  size_t offset,
                                   const vector<map<KeyWords, vector<string>>>& sortingInstructions) {
     auto* rows = new vector<Row>;
     *rows = currentDatabase->selectAll(tablename);
@@ -205,7 +212,7 @@ void *Manager::executeSelectQuery(const vector<string>& columnNames,
     *rows = currentDatabase->selectColumns(tablename, *rows, columnNames);
 
     if(rows->size() > limit && limit != -1) {
-        *rows = std::vector<Row>(rows->begin(), rows->begin() + limit);
+        *rows = std::vector<Row>(rows->begin() + offset, rows->begin() + offset + limit);
     }
 
     if(!sortingInstructions.empty()) {

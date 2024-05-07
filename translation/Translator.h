@@ -11,11 +11,34 @@
 #include "../entities/Value.h"
 #include "../Util.h"
 #include "Factor.h"
+#include <set>
 
 using namespace std;
 
 class Translator {
 public:
+    static void validateTokensOrder(const vector<string>& tokens) {
+        set<KeyWords> keyWordsSet;
+
+        for(const auto& token : tokens) {
+            KeyWords keyWord = Util::parseKeyWord(token);
+
+            if(keyWord == KeyWords::SELECT) {
+                if(!keyWordsSet.empty()) throw invalid_argument("SELECT must be first key word");
+            }
+
+            if(keyWord == KeyWords::WHERE) {
+                if(keyWordsSet.contains(KeyWords::LIMIT)) throw invalid_argument("LIMIT must go after WHERE");
+            }
+
+            if(keyWord == KeyWords::ORDER) {
+                if(keyWordsSet.contains(KeyWords::LIMIT)) throw invalid_argument("ORDER must go after WHERE");
+            }
+
+            keyWordsSet.insert(keyWord);
+        }
+    }
+
     static map<string, Value> createVariables(vector<string> columnNames, Row row) {
         map<string, Value> variables;
 
@@ -153,7 +176,7 @@ public:
     }
 
     static vector<string> extractColumnNamesForSelect(vector<string> tokens) {
-        if(tokens.size() < 2 || tokens[0] != "SELECT") throw invalid_argument("Cannot extract column names from select query");
+        if(tokens.size() < 2 || Util::parseKeyWord(tokens[0]) != KeyWords::SELECT) throw invalid_argument("Cannot extract column names from select query");
 
         vector<string> columnNames;
 
@@ -171,10 +194,63 @@ public:
         return columnNames;
     }
 
+    static vector<string> extractColumnNamesForInsert(vector<string> tokens) {
+        if(tokens.size() < 3 || Util::parseKeyWord(tokens[0]) != KeyWords::INSERT) throw invalid_argument("Cannot extract column names from insert query");
+
+        vector<string> columnNames;
+
+        auto tokenIt = tokens.begin() + 3;
+        while (Util::parseKeyWord(*tokenIt) == KeyWords::NOT_A_KEY_WORD) {
+            if(tokenIt == tokens.end()) throw invalid_argument("Cannot extract column names from select query");
+
+            if(*tokenIt != ",") {
+                columnNames.push_back(*tokenIt);
+            }
+
+            tokenIt++;
+        }
+
+        return columnNames;
+    }
+
+    static vector<vector<string>> extractValuesForInsert(vector<string> tokens) {
+        auto tokenIt = tokens.begin();
+        while (Util::parseKeyWord(*tokenIt) != KeyWords::VALUES) {
+            if(tokenIt == tokens.end()) throw invalid_argument("Specify values to insert using VALUES");
+            tokenIt++;
+        }
+        tokenIt++; // move to first parenthesis
+        if(*tokenIt != "(") throw invalid_argument("VALUES must be set in parenthesis");
+        tokenIt++; // skip first parenthesis
+
+        vector<vector<string>> valuesArray;
+        while(tokenIt != tokens.end()) {
+            if(*tokenIt == ",") {
+                tokenIt++;
+                continue;
+            }
+
+            if(*tokenIt == "(") {
+                tokenIt++;
+                vector<string> values;
+                while(tokenIt != tokens.end() && *tokenIt != ")") {
+                    if(*tokenIt != ",") values.push_back(*tokenIt);
+                    tokenIt++;
+                }
+                valuesArray.push_back(values);
+            }
+
+            tokenIt++;
+        }
+
+        return valuesArray;
+    }
+
+
     static string extractTableName(vector<string> tokens) {
         auto tokenIt = tokens.begin();
         while (tokenIt != tokens.end()) {
-            if(*tokenIt == Util::getKeyWordName(KeyWords::FROM)) {
+            if(Util::parseKeyWord(*tokenIt) == KeyWords::FROM or Util::parseKeyWord(*tokenIt) == KeyWords::INTO) {
                 if(tokenIt + 1 != tokens.end()) {
                     return *(tokenIt + 1);
                 } else {
@@ -184,14 +260,14 @@ public:
 
             tokenIt++;
         }
-        throw invalid_argument("Table name required after FROM word");
+        throw invalid_argument("FROM cannot be end of query");
     }
 
     static vector<string> extractWhereCauseTokens(vector<string> tokens) {
         vector<string> causeTokens;
         auto tokenIt = tokens.begin();
         while (tokenIt != tokens.end()) {
-            if(*tokenIt == Util::getKeyWordName(KeyWords::WHERE)) {
+            if(Util::parseKeyWord(*tokenIt) == KeyWords::WHERE) {
                 tokenIt++;
                 while (tokenIt != tokens.end() and Util::parseKeyWord(*tokenIt) == KeyWords::NOT_A_KEY_WORD) {
                     causeTokens.push_back(*tokenIt);
@@ -208,7 +284,7 @@ public:
     static size_t extractLimit(vector<string> tokens) {
         auto tokenIt = tokens.begin();
         while (tokenIt != tokens.end()) {
-            if(*tokenIt == Util::getKeyWordName(KeyWords::LIMIT)) {
+            if(Util::parseKeyWord(*tokenIt) == KeyWords::LIMIT) {
                 if(tokenIt + 1 != tokens.end()) {
                     return stoull(*(tokenIt + 1));
                 } else {
@@ -219,6 +295,23 @@ public:
             tokenIt++;
         }
         return -1;
+    }
+
+    static size_t extractOffset(vector<string> tokens) {
+        auto tokenIt = tokens.begin();
+        while (tokenIt != tokens.end()) {
+            if(Util::parseKeyWord(*tokenIt) == KeyWords::LIMIT) {
+                if(tokenIt + 1 != tokens.end()
+                and tokenIt + 2 != tokens.end()
+                and tokenIt + 3 != tokens.end()
+                and Util::parseKeyWord(*(tokenIt + 2)) == KeyWords::OFFSET) {
+                    return stoull(*(tokenIt + 3));
+                }
+            }
+
+            tokenIt++;
+        }
+        return 0;
     }
 
     static vector<map<KeyWords, vector<string>>> extractOrderColumns(vector<string> tokens) {

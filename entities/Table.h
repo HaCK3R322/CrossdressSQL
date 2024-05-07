@@ -18,17 +18,29 @@ public:
     Header header;
     std::vector<Pointer> pointers;
 
+    /**
+     * Creates new pointer for value with specified size. Changes data start shift, pointers and number of pointers
+     * @param dataSize
+     * @return
+     */
     Pointer addPointer(size_t dataSize) {
         header.dataStartShift += dataSize;
-        Pointer pointer(header.dataStartShift, pointers.size());
+        Pointer pointer(header.dataStartShift);
         pointers.push_back(pointer);
         header.numberOfPointers += 1;
         return pointer;
     }
 
     void erasePointer(Pointer pointer) {
-        pointers.erase(pointers.begin() + pointer.index);
-        header.numberOfPointers -= 1;
+        auto pointerIt = pointers.begin();
+        while (pointerIt != pointers.end()) {
+            if(pointerIt->shift == pointer.shift) {
+                pointers.erase(pointerIt);
+                header.numberOfPointers -= 1;
+                break;
+            }
+            pointerIt++;
+        }
     }
 };
 
