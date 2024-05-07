@@ -70,7 +70,9 @@ public:
     }
 
     ~Value() {
-        free(data);
+        if(data) {
+            free(data);
+        }
     }
 };
 

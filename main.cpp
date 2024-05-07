@@ -19,7 +19,9 @@ TableScheme getStudentScheme() {
     field1.IS_PRIMARY_KEY = true;
     FieldDescription field2("name", FieldTypes::TEXT);
     FieldDescription field3("age", FieldTypes::INT);
+    field3.NULLABLE = true;
     FieldDescription field4("weight", FieldTypes::FLOAT);
+    field4.NULLABLE = true;
 
     studentFields.push_back(field1);
     studentFields.push_back(field2);
@@ -242,7 +244,7 @@ int main() {
 
     manager.createDatabase("example");
     manager.createTable("example", getStudentScheme());
-    fillStudentsScheme(manager.getDatabase("example"), 100);
+    fillStudentsScheme(manager.getDatabase("example"), 1);
 
     while(true) {
         string query;
@@ -252,7 +254,7 @@ int main() {
         if(query == "exit") break;
 
         try {
-            void* responseData = reinterpret_cast<vector<Row>*>(manager.executeQuery(query, "example"));
+            void* responseData = reinterpret_cast<vector<Row>*>(manager.executeQuery(query));
 
             if(Util::splitByDelimiter(query, ' ').size() > 1
             and Util::parseKeyWord(Util::splitByDelimiter(query, ' ')[0]) == KeyWords::SELECT) {

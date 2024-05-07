@@ -458,6 +458,12 @@ vector<vector<Value>> Database::readAllValuesFromTable(const Table &table) {
 void Database::validateValueInserting(const Table &table, const string& columnName, const Value &value) {
     FieldDescription fieldDescription = getFieldDescriptionByName(table, columnName);
 
+    if(!fieldDescription.NULLABLE) {
+        if(value.size == 0) throw invalid_argument("Error inserting value into \""
+                                                   + fieldDescription.name
+                                                   + "\": field is not NULLABLE, but value is NULL");
+    }
+
     if (fieldDescription.type != value.type)
         throw invalid_argument("Error inserting value into \""
                                + fieldDescription.name
@@ -855,7 +861,7 @@ void Database::validateValuesInserting(const Table &table, const string &columnN
 
     if(!fieldDescription.NULLABLE) {
         for(const auto& value : values) {
-            if(value.data == nullptr) throw invalid_argument("Error inserting value into \""
+            if(value.size == 0) throw invalid_argument("Error inserting value into \""
                                                              + fieldDescription.name
                                                              + "\": field is not NULLABLE, but value is NULL");
         }

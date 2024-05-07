@@ -17,7 +17,7 @@ public:
 
     void createTable(const string& databaseName, const TableScheme& tableScheme);
 
-    void* executeQuery(const string& query, const string& databaseName);
+    void* executeQuery(const string& query);
 
 //private:
     vector<Database> databases;

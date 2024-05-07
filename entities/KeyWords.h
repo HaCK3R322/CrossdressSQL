@@ -8,6 +8,7 @@
 #include <map>
 
 enum class KeyWords {
+    // query
     NOT_A_KEY_WORD,
     SELECT,
     FROM,
@@ -29,7 +30,19 @@ enum class KeyWords {
     DROP,
     TABLE,
     DATABASE,
-    CONNECT
+    CONNECT,
+
+    // types
+    INT,
+    FLOAT,
+    VARCHAR,
+    TEXT,
+
+    // constraints,
+    PRIMARY_KEY,
+    UNIQUE,
+    FOREIGN_KEY,
+    NULLABLE
 };
 
 #endif //CROSSDRESSSQL_KEYWORDS_H

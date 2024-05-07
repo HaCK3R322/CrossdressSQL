@@ -32,6 +32,7 @@ void Manager::dropDatabase(const string& databaseName) {
     }
 
     databases = newDatabases;
+    currentDatabase = nullptr;
 }
 
 void Manager::createTable(const string &databaseName, const TableScheme& tableScheme) {
@@ -51,13 +52,17 @@ Database *Manager::getDatabase(const string &databaseName) {
     throw invalid_argument("Database with name " + databaseName + " not found");
 }
 
-void *Manager::executeQuery(const string &query, const string& databaseName) {
+void *Manager::executeQuery(const string &query) {
     vector<string> tokens = Lexer::tokenize(query);
     Translator::validateTokensOrder(tokens);
 
-    if(!currentDatabase
-    and tokens.size() != 2
-    and Util::parseKeyWord(tokens[0]) != KeyWords::CONNECT) throw invalid_argument("Connect to database first");
+    if(currentDatabase == nullptr) {
+        if(tokens.size() < 2) throw invalid_argument("Connect to database first");
+
+        if(Util::parseKeyWord(tokens[0]) != KeyWords::CONNECT
+        and !(Util::parseKeyWord(tokens[0]) == KeyWords::CREATE and Util::parseKeyWord(tokens[1]) == KeyWords::DATABASE))
+            throw invalid_argument("Connect to database first");
+    }
 
     cout << "Tokenized: [";
     auto tokenIt = tokens.begin();
@@ -131,7 +136,7 @@ void *Manager::executeQuery(const string &query, const string& databaseName) {
             return response;
         }
         case KeyWords::CREATE: {
-            if(tokens.size() < 3) throw invalid_argument("Invalid CREATE query");
+            if(tokens.size() != 3) throw invalid_argument("Invalid CREATE query");
 
             if(Util::parseKeyWord(tokens[1]) == KeyWords::DATABASE) {
                 if(Translator::isAppropriateName(tokens[2])) {
@@ -142,7 +147,9 @@ void *Manager::executeQuery(const string &query, const string& databaseName) {
                 *response = "CREATE DATABASE";
                 return response;
             } else if(Util::parseKeyWord(tokens[1]) == KeyWords::TABLE) {
-
+                if(Translator::isAppropriateName(tokens[2])) {
+                    // TODO: work from here
+                }
             }
 
             throw invalid_argument("Invalid CREATE query");

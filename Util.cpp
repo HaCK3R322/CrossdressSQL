@@ -6,6 +6,7 @@
 #include "Util.h"
 
 const map<KeyWords, string> Util::KEY_WORDS_STRING_MAP = {
+        //query
         {KeyWords::NOT_A_KEY_WORD   , "NOT_A_KEY_WORD" },
         {KeyWords::SELECT           , "SELECT"},
         {KeyWords::FROM             , "FROM"},
@@ -27,7 +28,19 @@ const map<KeyWords, string> Util::KEY_WORDS_STRING_MAP = {
         {KeyWords::DATABASE         , "DATABASE"},
         {KeyWords::CONNECT          , "CONNECT"},
         {KeyWords::TO               , "TO"},
-        {KeyWords::INTO             , "INTO"}
+        {KeyWords::INTO             , "INTO"},
+
+        //types
+        {KeyWords::INT              , "INT"},
+        {KeyWords::FLOAT            , "FLOAT"},
+        {KeyWords::VARCHAR          , "VARCHAR"},
+        {KeyWords::TEXT             , "TEXT"},
+
+        // constraints
+        {KeyWords::PRIMARY_KEY      , "PRIMARY_KEY"},
+        {KeyWords::FOREIGN_KEY      , "FOREIGN_KEY"},
+        {KeyWords::UNIQUE           , "UNIQUE"},
+        {KeyWords::NULLABLE         , "NULLABLE"},
 };
 
 string Util::getKeyWordName(KeyWords word) {
@@ -189,7 +202,7 @@ size_t Util::calcSizeOfValueData(const FieldDescription &correspondingField, con
 }
 
 string Util::convertValueToString(const Value &value) {
-    if(value.data == nullptr) return "NULL";
+    if(value.size == 0) return "NULL";
 
     if (value.type == FieldTypes::INT) return to_string(readInt(value.data));
     if (value.type == FieldTypes::FLOAT) return to_string(readFloat(value.data));
@@ -299,6 +312,9 @@ bool Util::canCompareTypes(FieldTypes a, FieldTypes b) {
 
 int Util::compare(const Value &a, const Value &b) {
     if(!canCompareTypes(a.type, b.type)) throw invalid_argument("Cannot compare different types");
+    if(a.size == 0 and b.size == 0) return 0;
+    if(a.size == 0) return -1;
+    if(b.size == 0) return 1;
 
     if(a.type == FieldTypes::INT) {
         int a_value = readInt(a.data);
