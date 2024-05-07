@@ -16,9 +16,9 @@ public:
     size_t size;
 
     Value() {
-        data = malloc(4);
+        data = nullptr;
         type = FieldTypes::INT;
-        size = 4;
+        size = 0;
     }
 
 

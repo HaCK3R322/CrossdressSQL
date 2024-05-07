@@ -172,6 +172,8 @@ size_t Util::getSizeOfValue(const FieldDescription &correspondingField, const Va
 }
 
 size_t Util::calcSizeOfValueData(const FieldDescription &correspondingField, const void *data) {
+    if(data == nullptr) return 0;
+
     if(correspondingField.type == FieldTypes::INT) return 4;
     if(correspondingField.type == FieldTypes::FLOAT) return 4;
     if(correspondingField.type == FieldTypes::VARCHAR) return correspondingField.varcharSize;
@@ -187,6 +189,8 @@ size_t Util::calcSizeOfValueData(const FieldDescription &correspondingField, con
 }
 
 string Util::convertValueToString(const Value &value) {
+    if(value.data == nullptr) return "NULL";
+
     if (value.type == FieldTypes::INT) return to_string(readInt(value.data));
     if (value.type == FieldTypes::FLOAT) return to_string(readFloat(value.data));
     if (value.type == FieldTypes::VARCHAR) return string{reinterpret_cast<const char*>(value.data), value.size};

@@ -31,8 +31,8 @@ public:
                 if(keyWordsSet.contains(KeyWords::LIMIT)) throw invalid_argument("LIMIT must go after WHERE");
             }
 
-            if(keyWord == KeyWords::ORDER) {
-                if(keyWordsSet.contains(KeyWords::LIMIT)) throw invalid_argument("ORDER must go after WHERE");
+            if(keyWord == KeyWords::LIMIT) {
+                if(keyWordsSet.contains(KeyWords::ORDER)) throw invalid_argument("ORDER must go after WHERE");
             }
 
             keyWordsSet.insert(keyWord);
@@ -315,18 +315,17 @@ public:
     }
 
     static vector<map<KeyWords, vector<string>>> extractOrderColumns(vector<string> tokens) {
-        vector<string> selectedColumns = extractColumnNamesForSelect(tokens);
         vector<map<KeyWords, vector<string>>> sortingInstructions;
 
         if(tokens.empty()) return sortingInstructions;
 
         auto tokenIt = tokens.begin();
-        while(*tokenIt != Util::getKeyWordName(KeyWords::ORDER)) {
-            if(tokenIt == tokens.end()) return sortingInstructions;
-            tokenIt++;
+        while(tokenIt != tokens.end() and Util::parseKeyWord(*tokenIt) != KeyWords::ORDER) tokenIt++;
+        if(tokenIt == tokens.end()) {
+            return sortingInstructions;
         }
         tokenIt++;
-        if(*tokenIt != Util::getKeyWordName(KeyWords::BY)) throw invalid_argument("Next word after ORDER must be BY");
+        if(Util::parseKeyWord(*tokenIt) != KeyWords::BY) throw invalid_argument("Next word after ORDER must be BY");
         tokenIt++;
 
         while(tokenIt != tokens.end()) {

@@ -32,9 +32,9 @@ TableScheme getStudentScheme() {
 }
 
 void fillStudentsScheme(Database* db, int numberOfRows) {
-    vector<Value> values;
+    vector<vector<Value>> values;
     vector<string> columns = {"id", "name", "age", "weight"};
-    string start_of_string_text("IVAN");
+    string start_of_string_text("12345");
     int age_data = 21;
     float weight = 86.2;
 
@@ -44,12 +44,25 @@ void fillStudentsScheme(Database* db, int numberOfRows) {
 
         vector<Value> testValues;
         testValues.emplace_back(FieldTypes::INT, &i, sizeof(int));
-        testValues.emplace_back(FieldTypes::TEXT, start_of_string_text.data(), 5);
+        testValues.emplace_back(FieldTypes::TEXT, start_of_string_text.data(), start_of_string_text.size() + 1);
         testValues.emplace_back(FieldTypes::INT, &age_data, 4);
         testValues.emplace_back(FieldTypes::FLOAT, &weight, 4);
 
-        db->insert("students", columns, testValues);
+        values.push_back(testValues);
     }
+
+    // additional
+    vector<Value> testValues;
+    int additional_id = 1000;
+    string additional_start_of_string_text = "1234567890";
+    testValues.emplace_back(FieldTypes::INT, &additional_id, sizeof(int));
+    testValues.emplace_back(FieldTypes::TEXT, additional_start_of_string_text.data(), additional_start_of_string_text.size() + 1);
+    testValues.emplace_back(FieldTypes::INT, &age_data, 4);
+    testValues.emplace_back(FieldTypes::FLOAT, &weight, 4);
+
+    values.push_back(testValues);
+
+    db->insert("students", columns, values);
     db->LOG = true;
 }
 
@@ -229,7 +242,7 @@ int main() {
 
     manager.createDatabase("example");
     manager.createTable("example", getStudentScheme());
-    fillStudentsScheme(manager.getDatabase("example"), 10);
+    fillStudentsScheme(manager.getDatabase("example"), 100);
 
     while(true) {
         string query;

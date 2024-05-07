@@ -2,6 +2,7 @@
 // Created by dicta on 27.04.2024.
 //
 
+#include <cmath>
 #include "Database.h"
 
 void Database::init() {
@@ -673,11 +674,30 @@ vector<Row> Database::selectAll(const Table &table) {
 
         size_t shift = dataSize - pointer.shift;
 
-        for(const auto & field : table.scheme.fields) {
-            void* data = static_cast<char *>(buffer) + shift;
+        // read FIELD IS NULL array of bits
+        vector<bool> fieldIsNull;
+        int numColumns = table.scheme.fields.size();
+        int numChars = ceil(numColumns / 8.0);
+        vector<char> fieldIsNull_buffer(numChars);
+        memcpy(fieldIsNull_buffer.data(), buffer + shift, numChars);
+
+        fieldIsNull.resize(numColumns);
+        for (int i = 0; i < numColumns; ++i) {
+            int byteIndex = i / 8;
+            int bitIndex = i % 8;
+            bool isNull = fieldIsNull_buffer[byteIndex] & (1 << bitIndex);
+            fieldIsNull[i] = isNull;
+        }
+        shift += numChars;
+
+
+        for(int i = 0; i < table.scheme.fields.size(); i++) {
+            FieldDescription field = table.scheme.fields.at(i);
+            void* data = fieldIsNull[i] ?  nullptr : static_cast<char *>(buffer) + shift;
             size_t value_size = Util::calcSizeOfValueData(field, data);
-            Value value(field.type, data, value_size);
-            values.push_back(value);
+
+            values.emplace_back(field.type, data, value_size);
+
             shift += value_size;
         }
 
@@ -717,53 +737,104 @@ vector<Row> Database::selectColumns(string tableName, const vector<Row> &rows, c
 
 void Database::insert(const string &tableName, const vector<string> &columns, vector<vector<Value>> valuesToInsert) {
     Table* table = getTableByName(tableName);
-
-    vector<Value> values;
-    values.reserve(table->scheme.fields.size());
-
-    // constraints check
-    if(columns.size() != valuesToInsert[0].size()) {
-        throw std::invalid_argument("Cannot insert valuesToInsert into "
-                                    + table->scheme.name
-                                    + ": different length between columns and valuesToInsert arrays (" + to_string(columns.size()) + " / " + to_string(valuesToInsert.size()) + ")");
+    vector<string> tableColumns;
+    for(const auto & field : table->scheme.fields) {
+        tableColumns.push_back(field.name);
     }
 
+    // Check if for all columns specified values
+    for(const auto& _row : valuesToInsert) {
+        if(columns.size() != _row.size()) {
+            throw std::invalid_argument("Cannot insert valuesToInsert into "
+                                        + table->scheme.name
+                                        + ": different length between columns and valuesToInsert arrays (" + to_string(columns.size()) + " / " + to_string(valuesToInsert.size()) + ")");
+        }
+    }
 
-    ofstream file(table->path, ios::out | ios::binary | ios::app);
-    if(!file.is_open()) throw std::invalid_argument("Cannot insert valuesToInsert into " + table->scheme.name + ": cannot open file with data");
+    // fill missing columns like NULL values
+    vector<vector<Value>> values;
+
+    for(int value_vector_index = 0; value_vector_index < valuesToInsert.size(); value_vector_index++) {
+        vector<Value> filledWithNullValues;
+        filledWithNullValues.reserve(table->scheme.fields.size());
+        for(int field_index = 0; field_index < table->scheme.fields.size(); field_index++) {
+            string fieldName = table->scheme.fields.at(field_index).name;
+            bool valueSpecified = false;
+            // first search for defined value
+            for(int column_index = 0; column_index < columns.size(); column_index++) {
+                // if column was specified for inserting -> add value from arguments
+                if(columns.at(column_index) == fieldName) {
+                    filledWithNullValues.push_back(valuesToInsert[value_vector_index][column_index]);
+                    valueSpecified = true;
+                    break;
+                }
+            }
+
+            // if there is no, construct and push NULL value
+            if(!valueSpecified) {
+                filledWithNullValues.emplace_back(table->scheme.fields.at(field_index).type, nullptr, 0);
+            }
+        }
+        values.push_back(filledWithNullValues);
+    }
+
+    //validation
+    for(int i = 0; i < tableColumns.size(); i++) {
+        vector<Value> column_of_values;
+        for(int j = 0; j < values.size(); j++) {
+            column_of_values.push_back(values[j][i]);
+        }
+        validateValuesInserting(*table, tableColumns.at(i), column_of_values);
+    }
+
+    FILE* outfile = fopen(table->path.string().c_str(), "rb+");
+
+    // create bits indicating NULL values
+    int numColumns = table->scheme.fields.size();
+    int numChars = std::ceil(numColumns / 8.0);
 
     size_t valuesDataSize = 0;
-    for(const auto & row : valuesToInsert) {
+    for(const auto & row : values) {
         for(const auto & value : row) {
             valuesDataSize += value.size;
         }
+        valuesDataSize += numChars;
     };
-
-    //validation
-    for(int i = 0; i < columns.size(); i++) {
-        vector<Value> column_of_values;
-        for(int j = 0; j < valuesToInsert.size(); j++) {
-            column_of_values.push_back(valuesToInsert[j][i]);
-        }
-        validateValuesInserting(*table, columns.at(i), column_of_values);
-    }
 
     char* buffer = reinterpret_cast<char *>(malloc(valuesDataSize));
     size_t shift = 0;
-    for(auto const &row : valuesToInsert) {
-        size_t valueSize = 0;
-        for(int i = 0; i < columns.size(); i++) {
-            memcpy(buffer + shift, row.at(i).data, row.at(i).size);
-            shift += row.at(i).size;
-            valueSize += row.at(i).size;
+    for(auto const &row : values) {
+        std::vector<char> value_is_null_buffer(numChars, 0);
+        for (int i = 0; i < numColumns; ++i) {
+            if (row.at(i).size == 0) {
+                int byteIndex = i / 8;
+                int bitIndex = i % 8;
+                value_is_null_buffer[byteIndex] |= (1 << bitIndex); // Устанавливаем бит в 1
+            }
         }
 
-        table->addPointer(valueSize);
+        size_t rowDataSize = 0;
+        for(int i = 0; i < tableColumns.size(); i++) {
+            rowDataSize += row.at(i).size;
+        }
+        rowDataSize += numChars; // data size + null fields flags size
+        size_t row_shift = valuesDataSize - rowDataSize - shift; // shift on values data size
+
+        memcpy(buffer + row_shift, value_is_null_buffer.data(), numChars);
+        row_shift += numChars;
+        for(int i = 0; i < tableColumns.size(); i++) {
+            memcpy(buffer + row_shift, row.at(i).data, row.at(i).size);
+            row_shift += row.at(i).size;
+        }
+
+        shift += rowDataSize;
+
+        table->addPointer(rowDataSize);
     }
 
-    file.seekp(table->header.dataStartShift, ios::end);
-    file.write(buffer, valuesDataSize);
-    file.close();
+    fseek(outfile, -table->header.dataStartShift, SEEK_END);
+    fwrite(buffer, valuesDataSize, 1, outfile);
+    fclose(outfile);
 
     log("Inserted into \"" + table->scheme.name + "\" " + to_string(valuesDataSize) + " bytes of data");
 
@@ -780,6 +851,14 @@ void Database::validateValuesInserting(const Table &table, const string &columnN
     FieldTypes type = values[0].type;
     for(const auto& value : values) {
         if(type != value.type) throw invalid_argument("Values array differs in types");
+    }
+
+    if(!fieldDescription.NULLABLE) {
+        for(const auto& value : values) {
+            if(value.data == nullptr) throw invalid_argument("Error inserting value into \""
+                                                             + fieldDescription.name
+                                                             + "\": field is not NULLABLE, but value is NULL");
+        }
     }
 
     if (fieldDescription.type != type)
