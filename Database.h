@@ -84,7 +84,7 @@ public:
     int getPrimaryKeyPos(const TableScheme& scheme);
     void validateScheme(const TableScheme& scheme);
 
-    bool LOG = true;
+    bool LOG = false;
     void log(const string& message);
 
     bool primaryKeysExist(const Table &table, const vector<Value> &values);

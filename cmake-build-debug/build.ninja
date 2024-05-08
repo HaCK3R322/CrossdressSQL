@@ -52,24 +52,28 @@ build cmake_object_order_depends_target_CrossdressSQL: phony || CMakeFiles/Cross
 build CMakeFiles/CrossdressSQL.dir/main.cpp.obj: CXX_COMPILER__CrossdressSQL_unscanned_Debug C$:/Users/dicta/CLionProjects/CrossdressSQL/main.cpp || cmake_object_order_depends_target_CrossdressSQL
   DEP_FILE = CMakeFiles\CrossdressSQL.dir\main.cpp.obj.d
   FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
+  INCLUDES = -IC:/Users/dicta/CLionProjects/cpp-httplib
   OBJECT_DIR = CMakeFiles\CrossdressSQL.dir
   OBJECT_FILE_DIR = CMakeFiles\CrossdressSQL.dir
 
 build CMakeFiles/CrossdressSQL.dir/Database.cpp.obj: CXX_COMPILER__CrossdressSQL_unscanned_Debug C$:/Users/dicta/CLionProjects/CrossdressSQL/Database.cpp || cmake_object_order_depends_target_CrossdressSQL
   DEP_FILE = CMakeFiles\CrossdressSQL.dir\Database.cpp.obj.d
   FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
+  INCLUDES = -IC:/Users/dicta/CLionProjects/cpp-httplib
   OBJECT_DIR = CMakeFiles\CrossdressSQL.dir
   OBJECT_FILE_DIR = CMakeFiles\CrossdressSQL.dir
 
 build CMakeFiles/CrossdressSQL.dir/Manager.cpp.obj: CXX_COMPILER__CrossdressSQL_unscanned_Debug C$:/Users/dicta/CLionProjects/CrossdressSQL/Manager.cpp || cmake_object_order_depends_target_CrossdressSQL
   DEP_FILE = CMakeFiles\CrossdressSQL.dir\Manager.cpp.obj.d
   FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
+  INCLUDES = -IC:/Users/dicta/CLionProjects/cpp-httplib
   OBJECT_DIR = CMakeFiles\CrossdressSQL.dir
   OBJECT_FILE_DIR = CMakeFiles\CrossdressSQL.dir
 
 build CMakeFiles/CrossdressSQL.dir/Util.cpp.obj: CXX_COMPILER__CrossdressSQL_unscanned_Debug C$:/Users/dicta/CLionProjects/CrossdressSQL/Util.cpp || cmake_object_order_depends_target_CrossdressSQL
   DEP_FILE = CMakeFiles\CrossdressSQL.dir\Util.cpp.obj.d
   FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
+  INCLUDES = -IC:/Users/dicta/CLionProjects/cpp-httplib
   OBJECT_DIR = CMakeFiles\CrossdressSQL.dir
   OBJECT_FILE_DIR = CMakeFiles\CrossdressSQL.dir
 
@@ -83,7 +87,7 @@ build CMakeFiles/CrossdressSQL.dir/Util.cpp.obj: CXX_COMPILER__CrossdressSQL_uns
 
 build CrossdressSQL.exe: CXX_EXECUTABLE_LINKER__CrossdressSQL_Debug CMakeFiles/CrossdressSQL.dir/main.cpp.obj CMakeFiles/CrossdressSQL.dir/Database.cpp.obj CMakeFiles/CrossdressSQL.dir/Manager.cpp.obj CMakeFiles/CrossdressSQL.dir/Util.cpp.obj
   FLAGS = -g
-  LINK_LIBRARIES = -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
+  LINK_LIBRARIES = -lws2_32  -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
   OBJECT_DIR = CMakeFiles\CrossdressSQL.dir
   POST_BUILD = cd .
   PRE_LINK = cd .

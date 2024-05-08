@@ -3,6 +3,8 @@ project(CrossdressSQL)
 
 set(CMAKE_CXX_STANDARD 20)
 
+include_directories(${CMAKE_INCLUDE_PATH})
+
 add_executable(CrossdressSQL main.cpp
         Database.cpp
         Database.h
@@ -31,3 +33,5 @@ add_executable(CrossdressSQL main.cpp
         Util.cpp
         entities/RowHeader.h
 )
+
+target_link_libraries(CrossdressSQL ws2_32)
