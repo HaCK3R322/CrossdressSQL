@@ -201,7 +201,7 @@ public:
 
         auto tokenIt = tokens.begin() + 3;
         while (Util::parseKeyWord(*tokenIt) == KeyWords::NOT_A_KEY_WORD) {
-            if(tokenIt == tokens.end()) throw invalid_argument("Cannot extract column names from select query");
+            if(tokenIt == tokens.end()) throw invalid_argument("Cannot extract column names from insert query");
 
             if(*tokenIt != ",") {
                 columnNames.push_back(*tokenIt);
@@ -210,6 +210,14 @@ public:
             tokenIt++;
         }
 
+        return columnNames;
+    }
+
+    static vector<string> getAllColumnNamesFromScheme(TableScheme scheme) {
+        vector<string> columnNames;
+        for(const auto& field : scheme.fields) {
+            columnNames.push_back(field.name);
+        }
         return columnNames;
     }
 
@@ -261,6 +269,60 @@ public:
             tokenIt++;
         }
         throw invalid_argument("FROM cannot be end of query");
+    }
+
+    static vector<pair<string, vector<KeyWords>>> extractColumnsAndKeyWordsForCreation(vector<string> tokens) {
+        vector<pair<string, vector<KeyWords>>> definitions;
+
+        auto tokenIt = tokens.begin();
+        while(tokenIt != tokens.end()) {
+            if(*tokenIt == "(") {
+                tokenIt++;
+                while(tokenIt != tokens.end() and *tokenIt != ")") {
+                    string columnName = *tokenIt;
+                    if(!isAppropriateName(columnName)) throw invalid_argument("Name " + columnName + " is reserved name");
+                    tokenIt++;
+                    vector<KeyWords> keyWords;
+
+                    if(Util::parseFieldType(*tokenIt) == FieldTypes::NOT_A_FIELD_TYPE) throw invalid_argument("After field name must go it's type.");
+                    keyWords.push_back(Util::parseKeyWord(*tokenIt));
+                    tokenIt++;
+
+                    while (tokenIt != tokens.end() and *tokenIt != "," and *tokenIt != ")") {
+                        if(Util::parseKeyWord(*(tokenIt - 1)) == KeyWords::FOREIGN_KEY) {
+                            tokenIt ++;
+                            continue;
+                        }
+
+                        if(Util::parseKeyWord(*tokenIt) != KeyWords::NOT_A_KEY_WORD) {
+                            keyWords.push_back(Util::parseKeyWord(*tokenIt));
+                            tokenIt++;
+                            continue;
+                        }
+                        throw invalid_argument("Wrong word in field definition: word \"" + *tokenIt + "\" is not a key word");
+                    }
+
+                    definitions.emplace_back(columnName, keyWords);
+                    tokenIt++;
+                }
+                return definitions;
+            }
+            tokenIt++;
+        }
+
+        throw invalid_argument("Invalid create table query");
+    }
+
+    static string extractForeignKeyForTableCreate(vector<string> tokens) {
+        auto tokenIt = tokens.begin();
+        while (tokenIt != tokens.end()) {
+            if(Util::parseKeyWord(*tokenIt) == KeyWords::FOREIGN_KEY) {
+                tokenIt++;
+                return *tokenIt;
+            }
+            tokenIt++;
+        }
+        throw invalid_argument("foreign key not found!");
     }
 
     static vector<string> extractWhereCauseTokens(vector<string> tokens) {

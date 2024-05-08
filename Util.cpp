@@ -111,6 +111,37 @@ FieldConstraints Util::parseFieldConstraint(const string& constraint) {
     return FieldConstraints::NOT_A_CONSTRAINT; // Return default if no match is found
 }
 
+const map<KeyWords, FieldTypes> Util::KEY_WORDS_FIELD_TYPES_MAP {
+        {KeyWords::INT          , FieldTypes::INT},
+        {KeyWords::FLOAT        , FieldTypes::FLOAT},
+        {KeyWords::TEXT         , FieldTypes::TEXT},
+        {KeyWords::VARCHAR      , FieldTypes::VARCHAR},
+};
+
+FieldTypes Util::keyWordToFieldType(KeyWords keyWord) {
+    try {
+        return KEY_WORDS_FIELD_TYPES_MAP.at(keyWord);
+    } catch (const std::out_of_range& ignored) {
+        return FieldTypes::NOT_A_FIELD_TYPE;
+    }
+}
+
+const map<KeyWords, FieldConstraints> Util::KEY_WORDS_FIELD_CONSTRAINTS_MAP {
+        {KeyWords::UNIQUE           , FieldConstraints::UNIQUE},
+        {KeyWords::PRIMARY_KEY      , FieldConstraints::PRIMARY_KEY},
+        {KeyWords::FOREIGN_KEY      , FieldConstraints::FOREIGN_KEY},
+        {KeyWords::NULLABLE         , FieldConstraints::NULLABLE}
+};;
+
+FieldConstraints Util::keyWordToFieldConstraint(KeyWords keyWord) {
+    try {
+        return KEY_WORDS_FIELD_CONSTRAINTS_MAP.at(keyWord);
+    } catch (const std::out_of_range& ignored) {
+        return FieldConstraints::NOT_A_CONSTRAINT;
+    }
+}
+
+
 string Util::trimSpaces(const string &str) {
     // Find the first non-space character from the beginning
     auto start = find_if_not(str.begin(), str.end(), [](unsigned char c) {
@@ -411,7 +442,6 @@ vector<vector<Value>> Util::parseValues(TableScheme scheme, vector<string> colum
     vector<vector<Value>> parsedValues;
 
     for(auto const& valuesStringArray : valuesStrings) {
-
         if(valuesStringArray.size() != columnNames.size()) throw invalid_argument("Cannot parse values: not all columns specified, or specified too much");
         vector<Value> values;
 

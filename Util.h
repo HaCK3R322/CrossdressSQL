@@ -23,6 +23,8 @@ public:
     static const map<KeyWords, string> KEY_WORDS_STRING_MAP;
     static const map<FieldTypes, string> FIELD_TYPES_STRING_MAP;
     static const map<FieldConstraints, string> FIELD_CONSTRAINTS_STRING_MAP;
+    static const map<KeyWords, FieldTypes> KEY_WORDS_FIELD_TYPES_MAP;
+    static const map<KeyWords, FieldConstraints> KEY_WORDS_FIELD_CONSTRAINTS_MAP;
 
     static string getFieldTypeName(FieldTypes type);
     static FieldTypes parseFieldType(const string& typeString);
@@ -30,6 +32,8 @@ public:
     static FieldConstraints parseFieldConstraint(const string& constraint);
     static string getKeyWordName(KeyWords word);
     static KeyWords parseKeyWord(const string& word);
+    static FieldTypes keyWordToFieldType(KeyWords keyWord);
+    static FieldConstraints keyWordToFieldConstraint(KeyWords keyWord);
 
     static string trimSpaces(const string& str);
     static vector<string> splitByDelimiter(const string& str, char delimiter);

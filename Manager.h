@@ -12,6 +12,9 @@ using namespace std;
 
 class Manager {
 public:
+    const char *const CONFIGURATION_FILEPATH = "crossdress.conf";
+    void initDatabases();
+
     void createDatabase(const string& databaseName);
     void dropDatabase(const string& databaseName);
 
@@ -19,7 +22,6 @@ public:
 
     void* executeQuery(const string& query);
 
-//private:
     vector<Database> databases;
     Database* currentDatabase = nullptr;
 

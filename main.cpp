@@ -241,10 +241,10 @@ void clearData() {
 
 int main() {
     Manager manager;
-
-    manager.createDatabase("example");
-    manager.createTable("example", getStudentScheme());
-    fillStudentsScheme(manager.getDatabase("example"), 1);
+    manager.initDatabases();
+//    manager.createDatabase("example");
+//    manager.createTable("example", getStudentScheme());
+//    fillStudentsScheme(manager.getDatabase("example"), 1);
 
     while(true) {
         string query;

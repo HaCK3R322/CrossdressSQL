@@ -42,9 +42,7 @@ void Database::init() {
     }
 
     // read conf?
-    // read schemes
-    // read constraints
-    // create tables descriptions in-memory
+    readAllTables();
 }
 
 void Database::log(const string& message) {
@@ -362,6 +360,7 @@ void Database::dropTable(const string& tableName) {
     for(auto &table: tables) {
         file << table.scheme.name << "\n";
     }
+    file.close();
 }
 
 Table* Database::getTableByName(const string& tableName) {
@@ -656,6 +655,7 @@ void Database::validateScheme(const TableScheme &scheme) {
             hasPrimaryKey = true;
         }
     }
+    if(!hasPrimaryKey) throw invalid_argument("Invalid scheme \"" + scheme.name + "\": no primary key specified");
 }
 
 vector<Row> Database::selectAll(const Table &table) {
@@ -952,4 +952,15 @@ void Database::drop() {
     } catch (const std::filesystem::filesystem_error& e) {
         std::cerr << "Error database \"" + name + "\": " << e.what() << std::endl;
     }
+}
+
+void Database::saveConfig() {
+    ofstream file(configurationPath, ios::app | ios::trunc);
+    if (!file.is_open()) {
+        throw invalid_argument("Cannot open configuration file!");
+    }
+    for(const auto& table : tables) {
+        file << (table.scheme.name + "\n");
+    }
+    file.close();
 }

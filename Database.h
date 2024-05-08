@@ -68,6 +68,7 @@ public:
     void saveAllTablesSchemes();
     void saveAllTablesConstraints();
     void saveTableHeaderAndPointers(const Table& table);
+    void saveConfig();
     void saveAllTables();
 
     void readTable(const string& tableName);

@@ -15,6 +15,12 @@ void Manager::createDatabase(const string &databaseName) {
     database.name = databaseName;
     database.init();
     databases.push_back(database);
+
+    fstream file(CONFIGURATION_FILEPATH, ios::out | ios::trunc);
+    for(const auto& db : databases) {
+        file << db.name << "\n";
+    }
+    file.close();
 }
 
 void Manager::dropDatabase(const string& databaseName) {
@@ -33,6 +39,11 @@ void Manager::dropDatabase(const string& databaseName) {
 
     databases = newDatabases;
     currentDatabase = nullptr;
+
+    fstream file(CONFIGURATION_FILEPATH, ios::out | ios::trunc);
+    for(auto &db: databases) {
+        file << db.name << "\n";
+    }
 }
 
 void Manager::createTable(const string &databaseName, const TableScheme& tableScheme) {
@@ -64,16 +75,16 @@ void *Manager::executeQuery(const string &query) {
             throw invalid_argument("Connect to database first");
     }
 
-    cout << "Tokenized: [";
-    auto tokenIt = tokens.begin();
-    while(tokenIt != tokens.end()) {
-        cout << *tokenIt;
-
-        if(tokenIt != tokens.end() - 1) cout << ", ";
-
-        tokenIt++;
-    }
-    cout << "] (" << tokens.size() << ")" << endl;
+//    cout << "Tokenized: [";
+//    auto tokenIt = tokens.begin();
+//    while(tokenIt != tokens.end()) {
+//        cout << *tokenIt;
+//
+//        if(tokenIt != tokens.end() - 1) cout << ", ";
+//
+//        tokenIt++;
+//    }
+//    cout << "] (" << tokens.size() << ")" << endl;
 
     KeyWords firstKeyWord = Translator::getFirstTokenAsKeyWord(tokens);
     switch (firstKeyWord) {
@@ -125,6 +136,7 @@ void *Manager::executeQuery(const string &query) {
             TableScheme scheme = currentDatabase->getTableByName(tableName)->scheme;
             // column names (written or if miss then from scheme)
             vector<string> columnNames = Translator::extractColumnNamesForInsert(tokens);
+            if(columnNames.empty()) columnNames = Translator::getAllColumnNamesFromScheme(scheme);
             // extract values
             vector<vector<string>> valuesStrings = Translator::extractValuesForInsert(tokens);
             vector<vector<Value>> values = Util::parseValues(scheme, columnNames, valuesStrings);
@@ -136,7 +148,7 @@ void *Manager::executeQuery(const string &query) {
             return response;
         }
         case KeyWords::CREATE: {
-            if(tokens.size() != 3) throw invalid_argument("Invalid CREATE query");
+            if(tokens.size() < 3) throw invalid_argument("Invalid CREATE query");
 
             if(Util::parseKeyWord(tokens[1]) == KeyWords::DATABASE) {
                 if(Translator::isAppropriateName(tokens[2])) {
@@ -148,7 +160,52 @@ void *Manager::executeQuery(const string &query) {
                 return response;
             } else if(Util::parseKeyWord(tokens[1]) == KeyWords::TABLE) {
                 if(Translator::isAppropriateName(tokens[2])) {
-                    // TODO: work from here
+                    string newTableName = tokens[2];
+
+                    auto fieldNamesAndKeyWords = Translator::extractColumnsAndKeyWordsForCreation(tokens);
+
+                    vector<FieldDescription> newTableFields;
+
+                    for(const auto& pair : fieldNamesAndKeyWords) {
+                        auto constraintsIt = pair.second.begin();
+
+                        FieldDescription newFieldDescription(pair.first, Util::keyWordToFieldType(*constraintsIt));
+                        constraintsIt++;
+
+                        while(constraintsIt != pair.second.end()) {
+                            switch (Util::keyWordToFieldConstraint(*constraintsIt)) {
+                                case FieldConstraints::NOT_A_CONSTRAINT:
+                                    throw invalid_argument("Can't get constraint from key word " + Util::getKeyWordName(*constraintsIt));
+                                case FieldConstraints::PRIMARY_KEY:
+                                    newFieldDescription.IS_PRIMARY_KEY = true;
+                                    break;
+                                case FieldConstraints::UNIQUE:
+                                    newFieldDescription.IS_UNIQUE = true;
+                                    break;
+                                case FieldConstraints::NULLABLE:
+                                    newFieldDescription.NULLABLE = true;
+                                    break;
+                                case FieldConstraints::FOREIGN_KEY:
+                                    auto referenceName = Translator::extractForeignKeyForTableCreate(tokens);
+                                    newFieldDescription.IS_FOREIGN_KEY = true;
+                                    newFieldDescription.REFERENCE = referenceName;
+                                    break;
+                            }
+                            constraintsIt++;
+                        }
+
+                        newTableFields.push_back(newFieldDescription);
+                    }
+
+                    TableScheme newTableScheme;
+                    newTableScheme.name = newTableName;
+                    newTableScheme.fields = newTableFields;
+
+                    currentDatabase->createTable(newTableScheme);
+
+                    auto* response = new string ;
+                    *response = "CREATE TABLE";
+                    return response;
                 }
             }
 
@@ -231,4 +288,21 @@ void *Manager::executeSelectQuery(const vector<string>& columnNames,
 
 void Manager::switchToDatabase(const string &databaseName) {
     currentDatabase = getDatabase(databaseName);
+}
+
+void Manager::initDatabases() {
+    fstream file(CONFIGURATION_FILEPATH, ios::in);
+    if(!file.is_open()) {
+        file.close();
+        file.open(CONFIGURATION_FILEPATH, ios::out);
+        file.close();
+        file.open(CONFIGURATION_FILEPATH, ios::in);
+    }
+
+    string line;
+    while (getline(file, line)) {
+        createDatabase(line);
+    }
+
+    file.close();
 }
