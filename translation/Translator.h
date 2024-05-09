@@ -176,13 +176,19 @@ public:
     }
 
     static vector<string> extractColumnNamesForSelect(vector<string> tokens) {
-        if(tokens.size() < 2 || Util::parseKeyWord(tokens[0]) != KeyWords::SELECT) throw invalid_argument("Cannot extract column names from select query");
+        if(tokens.size() < 2 || Util::parseKeyWord(tokens[0]) != KeyWords::SELECT) {
+            throw invalid_argument("Cannot extract column names from select query 123");
+        }
 
         vector<string> columnNames;
+        if(tokens[1] == "*") {
+            columnNames.emplace_back("*");
+            return columnNames;
+        }
 
         auto tokenIt = tokens.begin() + 1;
         while (Util::parseKeyWord(*tokenIt) == KeyWords::NOT_A_KEY_WORD) {
-            if(tokenIt == tokens.end()) throw invalid_argument("Cannot extract column names from select query");
+            if(tokenIt == tokens.end()) throw invalid_argument("Cannot extract column names from select query 2");
 
             if(*tokenIt != ",") {
                 columnNames.push_back(*tokenIt);

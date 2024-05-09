@@ -21,6 +21,10 @@ int main() {
     // Define a route for POST requests on "/query"
     svr.Post("/query", [&manager](const Request& req, Response& res) {
         try {
+            res.set_header("Access-Control-Allow-Origin", "*");  // Allows all domains
+            res.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
+            res.set_header("Access-Control-Allow-Headers", "Content-Type");
+
             std::string query = req.body; // Get the SQL query from the POST request body
             for (auto& ch : query) {
                 if (ch == '\n') {
@@ -45,8 +49,8 @@ int main() {
     });
 
     // Start the server
-    std::cout << "Server started at http://localhost:8080\n";
-    svr.listen("localhost", 8080);
+    std::cout << "Server started at http://localhost:5431\n";
+    svr.listen("localhost", 5431);
 
     return 0;
 }

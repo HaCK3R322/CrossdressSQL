@@ -146,9 +146,9 @@ public:
         }
 
         // Define regexes for whole word replacements
-        std::regex andRegex(R"(\bAND\b)");
-        std::regex orRegex(R"(\bOR\b)");
-        std::regex notRegex(R"(\bNOT\b)");
+        std::regex andRegex(R"(\bAND\b)", std::regex_constants::icase);
+        std::regex orRegex(R"(\bOR\b)", std::regex_constants::icase);
+        std::regex notRegex(R"(\bNOT\b)", std::regex_constants::icase);
 
         // Perform replacements outside of single-quoted text
         text = std::regex_replace(text, andRegex, "&");
